@@ -1,32 +1,218 @@
 <!DOCTYPE html>
 <html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Absensi</title>
+
+<style>
+body{
+  background:#0b1a2e;
+  color:white;
+  text-align:center;
+  font-family:Arial;
+}
+
+.hidden{display:none}
+
+button{
+  padding:10px 16px;
+  background:#22c55e;
+  border:none;
+  border-radius:8px;
+  color:white;
+}
+
+video{
+  width:90%;
+  border-radius:10px;
+}
+
+.radar{
+  width:200px;
+  height:200px;
+  border:2px solid #22c55e;
+  border-radius:50%;
+  margin:30px auto;
+  position:relative;
+}
+
+.line{
+  width:50%;
+  height:2px;
+  background:#22c55e;
+  position:absolute;
+  top:50%;
+  left:50%;
+  transform-origin:left;
+  animation:spin 2s linear infinite;
+}
+
+@keyframes spin{
+  0%{transform:rotate(0)}
+  100%{transform:rotate(360deg)}
+}
+</style>
+</head>
+
 <body>
 
-<button onclick="test()">TEST POST</button>
+<div id="scanPage">
+  <h2>ABSENSI</h2>
+  <p>UID: <span id="uid">-</span></p>
+  <button onclick="startScan()">SCAN KARTU</button>
+</div>
+
+<div id="locPage" class="hidden">
+  <h3>📍 Cek Lokasi</h3>
+  <div class="radar"><div class="line"></div></div>
+  <p id="status">Mengambil lokasi...</p>
+</div>
+
+<div id="camPage" class="hidden">
+  <h3>📸 Kamera</h3>
+  <video id="video" autoplay playsinline></video>
+</div>
 
 <script>
+
 const URL = "https://script.google.com/macros/s/AKfycbznCmA9JKgrMSklIBvN8y7fpqGJt1jNSNUEu9hfGmCgGV5bMhAQPfzFqaB_leRqLis/exec";
 
-async function test(){
+let stream;
+
+/* ================= NFC ================= */
+async function startScan(){
+  try{
+    const ndef = new NDEFReader();
+    await ndef.scan();
+
+    document.getElementById("status").innerText = "Tempel kartu...";
+
+    ndef.onreading = (e)=>{
+      window.uid = e.serialNumber;
+      document.getElementById("uid").innerText = window.uid;
+
+      show("locPage");
+      getLocation();
+    }
+
+  }catch{
+    alert("HP tidak support NFC");
+  }
+}
+
+/* ================= LOKASI ================= */
+function getLocation(){
+
+navigator.geolocation.getCurrentPosition(async(pos)=>{
+
+  window.lat = pos.coords.latitude;
+  window.lng = pos.coords.longitude;
+
+  document.getElementById("status").innerText = "Validasi lokasi...";
 
   try{
 
-    await fetch(URL,{
+    let res = await fetch(URL,{
       method:"POST",
-      mode:"no-cors",
+      headers:{
+        "Content-Type":"application/json"
+      },
       body: JSON.stringify({
-        uid:"TEST123"
+        step:"cek",
+        uid:window.uid,
+        lat:window.lat,
+        lng:window.lng
       })
     });
 
-    alert("TERKIRIM ✅");
+    let data = await res.json();
+
+    if(data.status === "VALID"){
+      document.getElementById("status").innerText = "Lokasi valid ✔";
+      setTimeout(openCamera,1000);
+    }else{
+      alert("Gagal: " + data.status);
+      location.reload();
+    }
 
   }catch(e){
-    alert("GAGAL ❌");
+    alert("Gagal koneksi server");
     console.log(e);
   }
 
+});
 }
+
+/* ================= CAMERA ================= */
+async function openCamera(){
+
+show("camPage");
+
+stream = await navigator.mediaDevices.getUserMedia({video:true});
+
+let video = document.getElementById("video");
+video.srcObject = stream;
+
+setTimeout(()=>takePhoto(video),2000);
+}
+
+/* ================= FOTO ================= */
+function takePhoto(video){
+
+let canvas = document.createElement("canvas");
+canvas.width = video.videoWidth;
+canvas.height = video.videoHeight;
+
+canvas.getContext("2d").drawImage(video,0,0);
+
+let foto = canvas.toDataURL("image/jpeg",0.6);
+
+sendData(foto);
+}
+
+/* ================= SEND ================= */
+async function sendData(foto){
+
+try{
+
+let res = await fetch(URL,{
+  method:"POST",
+  headers:{
+    "Content-Type":"application/json"
+  },
+  body: JSON.stringify({
+    step:"absen",
+    uid:window.uid,
+    lat:window.lat,
+    lng:window.lng,
+    foto:foto
+  })
+});
+
+let data = await res.json();
+
+stream.getTracks().forEach(t=>t.stop());
+
+if(data.status === "SUCCESS"){
+  alert("Absensi berhasil: " + data.nama);
+  location.reload();
+}else{
+  alert("Error: " + data.status);
+}
+
+}catch(e){
+  alert("Gagal kirim data");
+  console.log(e);
+}
+
+}
+
+/* ================= UI ================= */
+function show(id){
+  document.querySelectorAll("div").forEach(d=>d.classList.add("hidden"));
+  document.getElementById(id).classList.remove("hidden");
+}
+
 </script>
 
 </body>
