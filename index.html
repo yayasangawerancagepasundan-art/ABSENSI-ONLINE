@@ -1,184 +1,37 @@
 <!DOCTYPE html>
 <html>
-<head>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Absensi</title>
-
-<style>
-body{background:#0b1a2e;color:white;text-align:center;font-family:Arial;}
-.hidden{display:none}
-
-.radar{
-  width:200px;height:200px;border:2px solid #22c55e;
-  border-radius:50%;margin:30px auto;position:relative;
-}
-
-.line{
-  width:50%;height:2px;background:#22c55e;
-  position:absolute;top:50%;left:50%;
-  transform-origin:left;
-  animation:spin 2s linear infinite;
-}
-
-@keyframes spin{
-  0%{transform:rotate(0)}
-  100%{transform:rotate(360deg)}
-}
-
-button{
-  padding:10px;background:#22c55e;border:none;color:white;
-}
-
-video{width:90%;border-radius:10px;}
-</style>
-</head>
-
 <body>
 
-<div id="scanPage">
-<h2>ABSENSI</h2>
-<p>UID: <span id="uid">-</span></p>
-<button onclick="startScan()">SCAN</button>
-<p id="status">Menunggu...</p>
-</div>
-
-<div id="locPage" class="hidden">
-<h3>📍 Lokasi</h3>
-<div class="radar">
-  <div class="line"></div>
-</div>
-<p id="locStatus"></p>
-<p id="jarak"></p>
-</div>
-
-<div id="camPage" class="hidden">
-<h3>📸 Kamera</h3>
-<video id="video" autoplay playsinline></video>
-</div>
+<button onclick="test()">TEST POST</button>
 
 <script>
+const URL = "https://script.google.com/macros/s/AKfycbznCmA9JKgrMSklIBvN8y7fpqGJt1jNSNUEu9hfGmCgGV5bMhAQPfzFqaB_leRqLis/exec";
 
-const URL="https://script.google.com/macros/s/AKfycbxEzs-krfZ8i12sbVaw5bo_HQEY7HNKxcIXpBmcdDpNvR8ckTgypRqz46gmX1590EM/exec";
+async function test(){
 
-let stream;
-
-/* ===================== NFC ===================== */
-async function startScan(){
   try{
-    const ndef=new NDEFReader();
-    await ndef.scan();
 
-    document.getElementById("status").innerText="Tempel kartu";
+    let res = await fetch(URL,{
+      method:"POST",
+      headers:{
+        "Content-Type":"application/json"
+      },
+      body: JSON.stringify({
+        uid:"TEST123"
+      })
+    });
 
-    ndef.onreading=(e)=>{
-      window.uid=e.serialNumber;
-      console.log("UID:",window.uid);
+    let text = await res.text();
 
-      document.getElementById("uid").innerText=window.uid;
+    console.log("RESP:", text);
+    alert(text);
 
-      show("locPage");
-      getLocation();
-    }
-  }catch{
-    alert("NFC tidak support");
-  }
-}
-
-/* ===================== LOKASI ===================== */
-function getLocation(){
-navigator.geolocation.getCurrentPosition(async(pos)=>{
-
-  window.lat=pos.coords.latitude;
-  window.lng=pos.coords.longitude;
-
-  console.log("GPS:",window.lat,window.lng);
-
-  let res=await fetch(URL,{
-    method:"POST",
-    body:JSON.stringify({
-      mode:"cek",
-      uid:window.uid,
-      lat:window.lat,
-      lng:window.lng
-    })
-  });
-
-  let text=await res.text();
-  console.log("RESP:",text);
-
-  let data=JSON.parse(text);
-
-  document.getElementById("jarak").innerText=data.jarak+" m";
-
-  if(data.status==="VALID"){
-    setTimeout(openCamera,1000);
-  }else{
-    alert("Diluar area");
+  }catch(e){
+    console.log("ERROR:", e);
+    alert("GAGAL CONNECT");
   }
 
-});
 }
-
-/* ===================== CAMERA ===================== */
-async function openCamera(){
-show("camPage");
-
-stream=await navigator.mediaDevices.getUserMedia({video:true});
-let video=document.getElementById("video");
-video.srcObject=stream;
-
-setTimeout(()=>takePhoto(video),2000);
-}
-
-/* ===================== FOTO ===================== */
-function takePhoto(video){
-let canvas=document.createElement("canvas");
-canvas.width=video.videoWidth;
-canvas.height=video.videoHeight;
-
-canvas.getContext("2d").drawImage(video,0,0);
-
-let foto=canvas.toDataURL("image/jpeg",0.5);
-
-sendData(foto);
-}
-
-/* ===================== SEND ===================== */
-async function sendData(foto){
-
-console.log("SEND");
-
-let res=await fetch(URL,{
-  method:"POST",
-  body:JSON.stringify({
-    uid:window.uid,
-    lat:window.lat,
-    lng:window.lng,
-    foto:foto
-  })
-});
-
-let text=await res.text();
-console.log("RESP FINAL:",text);
-
-let data=JSON.parse(text);
-
-stream.getTracks().forEach(t=>t.stop());
-
-if(data.status==="SUCCESS"){
-  alert("Absensi berhasil");
-}else{
-  alert(data.status);
-}
-
-}
-
-/* ===================== UI ===================== */
-function show(id){
-  document.querySelectorAll("div").forEach(d=>d.classList.add("hidden"));
-  document.getElementById(id).classList.remove("hidden");
-}
-
 </script>
 
 </body>
