@@ -99,7 +99,7 @@ async function absen() {
           let jarak = getDistance(lat, lng, data.lat, data.lng);
 
           /* 🔹 Validasi radius 5 meter */
-          if (jarak > 5) {
+          if (jarak > 30) {
             status.innerHTML = "❌ Di luar radius (" + Math.round(jarak) + " m)";
             return;
           }
