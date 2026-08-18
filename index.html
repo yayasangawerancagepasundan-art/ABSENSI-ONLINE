@@ -5,72 +5,78 @@
 <title>Absensi</title>
 
 <style>
-body{
-  background:#0b1a2e;
-  color:white;
-  text-align:center;
-  font-family:Arial;
-}
-
+body{background:#0b1a2e;color:white;text-align:center;font-family:Arial}
 .hidden{display:none}
 
-button{
-  padding:10px 16px;
-  background:#22c55e;
-  border:none;
-  border-radius:8px;
-  color:white;
-}
-
-video{
-  width:90%;
-  border-radius:10px;
-}
-
-.radar{
-  width:200px;
-  height:200px;
-  border:2px solid #22c55e;
-  border-radius:50%;
-  margin:30px auto;
+.radar-box{
   position:relative;
+  width:220px;
+  height:220px;
+  margin:40px auto;
+  border-radius:50%;
+  border:2px solid #22c55e;
+  overflow:hidden;
 }
 
-.line{
+.radar-line{
+  position:absolute;
   width:50%;
   height:2px;
   background:#22c55e;
-  position:absolute;
   top:50%;
   left:50%;
-  transform-origin:left;
+  transform-origin:left center;
   animation:spin 2s linear infinite;
 }
 
 @keyframes spin{
-  0%{transform:rotate(0)}
+  0%{transform:rotate(0deg)}
   100%{transform:rotate(360deg)}
 }
+
+.dot{
+  width:12px;height:12px;background:#22c55e;border-radius:50%;
+  position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+}
+
+.target{
+  width:10px;height:10px;background:red;border-radius:50%;
+  position:absolute;top:20%;left:70%;
+}
+
+button{
+  padding:10px 18px;
+  background:#22c55e;
+  border:none;border-radius:8px;color:white;
+}
+
+video{width:90%;border-radius:10px;background:black}
 </style>
 </head>
 
 <body>
 
 <div id="scanPage">
-  <h2>ABSENSI</h2>
-  <p>UID: <span id="uid">-</span></p>
-  <button onclick="startScan()">SCAN KARTU</button>
+<h2>ABSENSI</h2>
+<p>UID: <span id="uid">-</span></p>
+<button onclick="startScan()">SCAN</button>
+<p id="status">Menunggu...</p>
 </div>
 
-<div id="locPage" class="hidden">
-  <h3>📍 Cek Lokasi</h3>
-  <div class="radar"><div class="line"></div></div>
-  <p id="status">Mengambil lokasi...</p>
+<div id="locationPage" class="hidden">
+<h3>📍 Cek Lokasi</h3>
+<div class="radar-box">
+  <div class="radar-line"></div>
+  <div class="dot"></div>
+  <div class="target"></div>
+</div>
+<p id="locStatus">Mengambil lokasi...</p>
+<p id="jarak">-</p>
 </div>
 
-<div id="camPage" class="hidden">
-  <h3>📸 Kamera</h3>
-  <video id="video" autoplay playsinline></video>
+<div id="cameraPage" class="hidden">
+<h3>📸 Kamera</h3>
+<video id="video" autoplay playsinline></video>
 </div>
 
 <script>
@@ -79,70 +85,63 @@ const URL = "https://script.google.com/macros/s/AKfycbznCmA9JKgrMSklIBvN8y7fpqGJ
 
 let stream;
 
-/* NFC */
+/* SCAN */
 async function startScan(){
-  try{
-    const ndef = new NDEFReader();
-    await ndef.scan();
+  const ndef = new NDEFReader();
+  await ndef.scan();
 
-    ndef.onreading = (e)=>{
-      window.uid = e.serialNumber;
-      document.getElementById("uid").innerText = window.uid;
+  ndef.onreading = (e)=>{
+    window.uid = e.serialNumber;
 
-      show("locPage");
-      getLocation();
-    }
+    document.getElementById("uid").innerText = window.uid;
 
-  }catch{
-    alert("HP tidak support NFC");
+    document.getElementById("scanPage").classList.add("hidden");
+    document.getElementById("locationPage").classList.remove("hidden");
+
+    getLocation();
   }
 }
 
-/* LOKASI */
+/* LOCATION */
 function getLocation(){
 
-navigator.geolocation.getCurrentPosition(async(pos)=>{
+navigator.geolocation.getCurrentPosition(async (pos)=>{
 
-  window.lat = pos.coords.latitude;
-  window.lng = pos.coords.longitude;
+  let lat = pos.coords.latitude;
+  let lng = pos.coords.longitude;
 
-  document.getElementById("status").innerText = "Validasi lokasi...";
+  window.lat = lat;
+  window.lng = lng;
 
-  let form = new URLSearchParams();
-  form.append("step","cek");
-  form.append("uid",window.uid);
-  form.append("lat",window.lat);
-  form.append("lng",window.lng);
+  document.getElementById("locStatus").innerText="Cek server...";
 
-  try{
+  let res = await fetch(URL + "?uid=" + window.uid + "&lat=" + lat + "&lng=" + lng);
+  let data = await res.json();
 
-    let res = await fetch(URL,{
-      method:"POST",
-      body: form
-    });
+  document.getElementById("jarak").innerText="Jarak: "+Math.round(data.jarak)+" m";
 
-    let data = await res.json();
+  if(data.status==="IN_RANGE"){
 
-    if(data.status === "VALID"){
-      document.getElementById("status").innerText = "Lokasi valid ✔";
-      setTimeout(openCamera,1000);
-    }else{
-      alert("Gagal: " + data.status);
-      location.reload();
-    }
+    window.nama = data.nama;
+    window.gudang = data.gudang;
 
-  }catch(e){
-    alert("Gagal koneksi server");
-    console.log(e);
+    document.getElementById("locStatus").innerText="VALID ✔";
+
+    setTimeout(openCamera,1000);
+
+  }else{
+    document.getElementById("locStatus").innerText="Diluar area ❌";
   }
 
 });
+
 }
 
 /* CAMERA */
 async function openCamera(){
 
-show("camPage");
+document.getElementById("locationPage").classList.add("hidden");
+document.getElementById("cameraPage").classList.remove("hidden");
 
 stream = await navigator.mediaDevices.getUserMedia({video:true});
 
@@ -150,6 +149,7 @@ let video = document.getElementById("video");
 video.srcObject = stream;
 
 setTimeout(()=>takePhoto(video),2000);
+
 }
 
 /* FOTO */
@@ -159,52 +159,39 @@ let canvas = document.createElement("canvas");
 canvas.width = video.videoWidth;
 canvas.height = video.videoHeight;
 
-canvas.getContext("2d").drawImage(video,0,0);
+let ctx = canvas.getContext("2d");
+ctx.drawImage(video,0,0);
 
-let foto = canvas.toDataURL("image/jpeg",0.5);
+let foto = canvas.toDataURL("image/jpeg");
 
 sendData(foto);
+
 }
 
 /* KIRIM */
 async function sendData(foto){
 
-let form = new URLSearchParams();
-form.append("step","absen");
-form.append("uid",window.uid);
-form.append("lat",window.lat);
-form.append("lng",window.lng);
-form.append("foto",foto);
-
-try{
-
 let res = await fetch(URL,{
   method:"POST",
-  body: form
+  headers:{
+    "Content-Type":"application/json"
+  },
+  body:JSON.stringify({
+    uid:window.uid,
+    nama:window.nama,
+    gudang:window.gudang,
+    lat:window.lat,
+    lng:window.lng,
+    foto:foto
+  })
 });
 
 let data = await res.json();
 
+alert(data.status);
+
 stream.getTracks().forEach(t=>t.stop());
 
-if(data.status === "SUCCESS"){
-  alert("Absensi berhasil: " + data.nama);
-  location.reload();
-}else{
-  alert("Error: " + data.status);
-}
-
-}catch(e){
-  alert("Gagal kirim data");
-  console.log(e);
-}
-
-}
-
-/* UI */
-function show(id){
-  document.querySelectorAll("div").forEach(d=>d.classList.add("hidden"));
-  document.getElementById(id).classList.remove("hidden");
 }
 
 </script>
