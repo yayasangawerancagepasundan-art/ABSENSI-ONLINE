@@ -3,126 +3,126 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Absensi NFC + Selfie</title>
+<title>Absensi</title>
 
 <style>
 body {
   font-family: Arial;
-  text-align: center;
-  background: #5dade2; /* 🔵 biru muda */
-  color: white;
-  margin: 0;
+  text-align:center;
+  background: linear-gradient(#5fa8d3, #4a90c2);
+  color:white;
 }
 
-/* 🔥 Background logo */
-body::before {
-  content: "";
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  width: 300px;
-  height: 300px;
-  background: url('logo.png') no-repeat center;
-  background-size: contain;
-  opacity: 0.1;
-  transform: translate(-50%, -50%);
-  z-index: 0;
-}
-
-.container {
-  position: relative;
-  z-index: 1;
-  max-width: 400px;
-  margin: auto;
-  padding: 20px;
-}
-
-/* CARD */
-.card {
-  background: rgba(255,255,255,0.15);
-  backdrop-filter: blur(10px);
-  padding: 20px;
-  border-radius: 15px;
-  margin-top: 20px;
-}
+.box { max-width:400px; margin:auto; padding:20px; }
 
 input, button {
-  width: 90%;
-  padding: 12px;
-  margin: 6px;
-  border-radius: 8px;
-  border: none;
-  font-size: 16px;
+  width:90%;
+  padding:12px;
+  margin:5px;
+  font-size:16px;
+  border-radius:8px;
+  border:none;
 }
 
-button {
-  background: #ffffff;
-  color: #3498db;
-  font-weight: bold;
+button { background:#ffffff; color:#333; }
+
+.card {
+  background: rgba(255,255,255,0.2);
+  padding:20px;
+  border-radius:15px;
+  margin-top:20px;
 }
 
-/* halaman */
-#pageAbsen { display: block; }
-#pageHasil { display: none; }
-
-img {
-  width: 120px;
-  border-radius: 10px;
-  margin-top: 10px;
-}
+img { width:150px; border-radius:12px; }
 </style>
 </head>
 
 <body>
 
-<div class="container">
+<div class="box">
 
-<!-- =========================
-   🔵 HALAMAN ABSEN
-========================= -->
-<div id="pageAbsen">
-  <h2>ABSENSI KARYAWAN</h2>
+<h2>ABSENSI KARYAWAN</h2>
 
-  <div class="card">
-    <input id="uid" placeholder="Scan / Input UID">
+<input id="uid" placeholder="Scan UID">
 
-    <input type="file" accept="image/*" capture="user" id="fotoSelfie">
+<input type="file" accept="image/*" capture="user" id="fotoSelfie">
 
-    <button onclick="absen()">ABSEN</button>
-    <button onclick="scanNFC()">📶 Scan NFC</button>
+<img id="preview" style="display:none; margin-top:10px;">
 
-    <p id="status"></p>
-  </div>
-</div>
+<button onclick="absen()">ABSEN</button>
 
-<!-- =========================
-   🟢 HALAMAN HASIL
-========================= -->
-<div id="pageHasil">
-  <h2>INFORMASI KARYAWAN</h2>
+<p id="status"></p>
 
-  <div class="card">
-    <img id="foto">
-    <h3 id="nama"></h3>
-    <p id="jabatan"></p>
-    <p id="info"></p>
-
-    <button onclick="kembali()">⬅️ Kembali</button>
-  </div>
+<div id="hasil" class="card" style="display:none;">
+  <img id="foto">
+  <h3 id="nama"></h3>
+  <p id="jabatan"></p>
+  <p id="info"></p>
 </div>
 
 </div>
 
 <script>
 
-const API_URL = "https://script.google.com/macros/s/AKfycbxEzs-krfZ8i12sbVaw5bo_HQEY7HNKxcIXpBmcdDpNvR8ckTgypRqz46gmX1590EM/exec";
+const API_URL = "PASTE_URL_WEB_APP_KAMU";
 
-/* =========================================
-   📸 SELFIE + WATERMARK
-========================================= */
-async function prosesSelfie(lat, lng) {
+/* ========================================= */
+async function absen() {
+
+  let uid = document.getElementById("uid").value.trim().toLowerCase();
+  let status = document.getElementById("status");
+
+  if (!uid) return status.innerHTML = "❌ UID kosong";
+
   let file = document.getElementById("fotoSelfie").files[0];
-  if (!file) return null;
+  if (!file) return status.innerHTML = "❌ Selfie dulu";
+
+  status.innerHTML = "📍 Ambil lokasi...";
+
+  navigator.geolocation.getCurrentPosition(async (pos) => {
+
+    let lat = pos.coords.latitude;
+    let lng = pos.coords.longitude;
+
+    let blob = await prosesSelfie(lat, lng);
+
+    let base64 = await blobToBase64(blob);
+
+    status.innerHTML = "⏳ Kirim data...";
+
+    let res = await fetch(API_URL, {
+      method: "POST",
+      body: JSON.stringify({
+        uid, lat, lng, foto: base64
+      })
+    });
+
+    let data = await res.json();
+
+    if (data.status === "success") {
+
+      document.getElementById("hasil").style.display = "block";
+      document.getElementById("foto").src = document.getElementById("preview").src;
+      document.getElementById("nama").innerText = data.nama;
+      document.getElementById("jabatan").innerText = data.jabatan;
+      document.getElementById("info").innerText =
+        data.tipe + " | " + new Date().toLocaleTimeString();
+
+      status.innerHTML = "✅ Berhasil";
+
+    } else {
+      status.innerHTML = "❌ " + data.message;
+    }
+
+  }, () => {
+    status.innerHTML = "❌ GPS gagal";
+  });
+}
+
+/* ========================================= */
+async function prosesSelfie(lat, lng) {
+
+  let file = document.getElementById("fotoSelfie").files[0];
 
   return new Promise((resolve) => {
 
@@ -146,134 +146,46 @@ async function prosesSelfie(lat, lng) {
       ctx.lineWidth = 3;
       ctx.font = "28px Arial";
 
-      let waktu = new Date().toLocaleString();
+      let y = canvas.height - 100;
 
-      ctx.strokeText("Lat: " + lat.toFixed(6), 20, canvas.height - 90);
-      ctx.fillText("Lat: " + lat.toFixed(6), 20, canvas.height - 90);
+      let t1 = "Lat: " + lat.toFixed(6);
+      let t2 = "Lng: " + lng.toFixed(6);
+      let t3 = new Date().toLocaleString();
 
-      ctx.strokeText("Lng: " + lng.toFixed(6), 20, canvas.height - 55);
-      ctx.fillText("Lng: " + lng.toFixed(6), 20, canvas.height - 55);
+      ctx.strokeText(t1, 20, y);
+      ctx.fillText(t1, 20, y);
 
-      ctx.strokeText(waktu, 20, canvas.height - 20);
-      ctx.fillText(waktu, 20, canvas.height - 20);
+      ctx.strokeText(t2, 20, y+30);
+      ctx.fillText(t2, 20, y+30);
 
-      canvas.toBlob(blob => resolve(blob), "image/jpeg", 0.9);
+      ctx.strokeText(t3, 20, y+60);
+      ctx.fillText(t3, 20, y+60);
+
+      canvas.toBlob(blob => {
+
+        let url = URL.createObjectURL(blob);
+        let preview = document.getElementById("preview");
+        preview.src = url;
+        preview.style.display = "block";
+
+        resolve(blob);
+
+      }, "image/jpeg", 0.9);
     };
 
     reader.readAsDataURL(file);
   });
 }
 
-/* =========================================
-   🚀 ABSEN
-========================================= */
-async function absen() {
-
-  let uid = document.getElementById("uid").value.trim().toLowerCase();
-  let status = document.getElementById("status");
-
-  if (!uid) {
-    status.innerHTML = "❌ UID kosong";
-    return;
-  }
-
-  let file = document.getElementById("fotoSelfie").files[0];
-  if (!file) {
-    status.innerHTML = "❌ Ambil selfie dulu";
-    return;
-  }
-
-  status.innerHTML = "📍 Mengambil lokasi...";
-
-  navigator.geolocation.getCurrentPosition(async (pos) => {
-
-    let lat = pos.coords.latitude;
-    let lng = pos.coords.longitude;
-
-    let fotoBlob = await prosesSelfie(lat, lng);
-
-    status.innerHTML = "⏳ Proses...";
-
-    try {
-
-      let res = await fetch(`${API_URL}?uid=${uid}`);
-      let text = await res.text();
-      let data = JSON.parse(text);
-
-      if (data.status === "success") {
-
-        let jarak = getDistance(lat, lng, data.lat, data.lng);
-
-        if (jarak > 50) {
-          status.innerHTML = "❌ Di luar radius (" + Math.round(jarak) + " m)";
-          return;
-        }
-
-        // 🔥 PINDAH HALAMAN
-        document.getElementById("pageAbsen").style.display = "none";
-        document.getElementById("pageHasil").style.display = "block";
-
-        document.getElementById("nama").innerText = data.nama;
-        document.getElementById("jabatan").innerText = data.jabatan;
-
-        document.getElementById("foto").src =
-          URL.createObjectURL(fotoBlob);
-
-        document.getElementById("info").innerText =
-          "Masuk | " + new Date().toLocaleTimeString();
-
-      } else {
-        status.innerHTML = "❌ RFID tidak ditemukan";
-      }
-
-    } catch (err) {
-      console.error(err);
-      status.innerHTML = "❌ Error koneksi";
-    }
-
-  }, () => {
-    status.innerHTML = "❌ GPS gagal";
-  });
-}
-
-/* =========================================
-   🔙 KEMBALI
-========================================= */
-function kembali() {
-  document.getElementById("pageAbsen").style.display = "block";
-  document.getElementById("pageHasil").style.display = "none";
-}
-
-/* =========================================
-   📶 NFC
-========================================= */
-async function scanNFC() {
-  if ('NDEFReader' in window) {
-    const reader = new NDEFReader();
-    await reader.scan();
-    reader.onreading = e => {
-      document.getElementById("uid").value = e.serialNumber;
+/* ========================================= */
+function blobToBase64(blob) {
+  return new Promise((resolve) => {
+    let reader = new FileReader();
+    reader.onloadend = () => {
+      resolve(reader.result.split(',')[1]);
     };
-  } else {
-    alert("HP tidak support NFC");
-  }
-}
-
-/* =========================================
-   📍 HITUNG JARAK
-========================================= */
-function getDistance(lat1, lon1, lat2, lon2) {
-  const R = 6371000;
-  const dLat = (lat2-lat1) * Math.PI/180;
-  const dLon = (lon2-lon1) * Math.PI/180;
-
-  const a =
-    Math.sin(dLat/2)*Math.sin(dLat/2) +
-    Math.cos(lat1*Math.PI/180) *
-    Math.cos(lat2*Math.PI/180) *
-    Math.sin(dLon/2)*Math.sin(dLon/2);
-
-  return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
+    reader.readAsDataURL(blob);
+  });
 }
 
 </script>
