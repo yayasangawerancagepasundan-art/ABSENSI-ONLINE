@@ -1,101 +1,107 @@
 <!DOCTYPE html>
-<html>
+<html lang="id">
 <head>
-  <meta charset="UTF-8">
-  <title>ABSENSI KARYAWAN</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Absensi NFC</title>
 
-  <style>
-    body {
-      font-family: Arial;
-      text-align: center;
-      padding: 20px;
-    }
-
-    h1 {
-      margin-bottom: 20px;
-    }
-
-    input {
-      padding: 10px;
-      width: 80%;
-      max-width: 300px;
-      margin-bottom: 10px;
-    }
-
-    button {
-      padding: 10px 20px;
-      margin: 5px;
-      cursor: pointer;
-    }
-
-    #status {
-      margin-top: 20px;
-      font-weight: bold;
-    }
-  </style>
+<style>
+body { font-family: Arial; text-align:center; background:#f5f5f5; }
+.box { max-width:400px; margin:auto; padding:20px; }
+input, button { width:90%; padding:12px; margin:5px; font-size:16px; }
+.card { background:#fff; padding:15px; border-radius:10px; margin-top:15px; }
+img { width:100px; border-radius:10px; }
+</style>
 </head>
 
 <body>
 
-<h1>ABSENSI KARYAWAN</h1>
+<div class="box">
+<h2>ABSENSI KARYAWAN</h2>
 
-<input type="text" id="uid" placeholder="Input UID / RFID">
-<br>
-
+<input id="uid" placeholder="Scan / Input UID">
 <button onclick="absen()">ABSEN</button>
+<button onclick="scanNFC()">📶 Scan NFC</button>
 
-<br><br>
+<p id="status"></p>
 
-<button onclick="startNFC()">📶 Scan NFC</button>
+<div id="hasil" class="card" style="display:none;">
+<img id="foto">
+<h3 id="nama"></h3>
+<p id="jabatan"></p>
+<p id="info"></p>
+</div>
 
-<p id="status">Status: -</p>
+</div>
 
 <script>
 const API_URL = "https://script.google.com/macros/s/AKfycbxEzs-krfZ8i12sbVaw5bo_HQEY7HNKxcIXpBmcdDpNvR8ckTgypRqz46gmX1590EM/exec";
 
-function absen() {
+async function absen() {
   let uid = document.getElementById("uid").value;
+  let status = document.getElementById("status");
 
   if (!uid) {
-    alert("Masukkan UID dulu!");
+    status.innerHTML = "❌ UID kosong";
     return;
   }
 
-  document.getElementById("status").innerText = "⏳ Memproses...";
+  status.innerHTML = "📍 Mengambil lokasi...";
 
-  fetch(API_URL + "?uid=" + uid)
-    .then(res => res.json())
-    .then(data => {
-      document.getElementById("status").innerText = "✅ " + data.status;
-    })
-    .catch(err => {
-      document.getElementById("status").innerText = "❌ Error koneksi";
-      console.log(err);
-    });
+  navigator.geolocation.getCurrentPosition(async (pos) => {
+
+    let lat = pos.coords.latitude;
+    let lng = pos.coords.longitude;
+
+    status.innerHTML = "⏳ Proses...";
+
+    try {
+      let res = await fetch(`${API_URL}?uid=${uid}&lat=${lat}&lng=${lng}`);
+      let data = await res.json();
+
+      if (data.status === "out_of_range") {
+        status.innerHTML = "❌ Di luar radius (" + data.jarak + " m)";
+        return;
+      }
+
+      if (data.status === "blocked") {
+        status.innerHTML = "❌ " + data.message;
+        return;
+      }
+
+      if (data.status === "success") {
+
+        status.innerHTML = "✅ Berhasil";
+
+        document.getElementById("hasil").style.display = "block";
+        document.getElementById("nama").innerText = data.nama;
+        document.getElementById("jabatan").innerText = data.jabatan;
+        document.getElementById("foto").src = data.foto;
+        document.getElementById("info").innerText =
+          data.tipe + " | " + data.waktu;
+
+      } else {
+        status.innerHTML = "❌ RFID tidak ditemukan";
+      }
+
+    } catch {
+      status.innerHTML = "❌ Error koneksi";
+    }
+
+  });
 }
 
-
-// NFC (hanya HP Android Chrome)
-async function startNFC() {
+// NFC
+async function scanNFC() {
   if ('NDEFReader' in window) {
     const reader = new NDEFReader();
-
     await reader.scan();
 
-    document.getElementById("status").innerText = "📡 Tempel kartu...";
-
     reader.onreading = event => {
-      let uid = event.serialNumber;
-      document.getElementById("uid").value = uid;
-
-      document.getElementById("status").innerText = "📥 UID terbaca: " + uid;
-
-      absen();
+      document.getElementById("uid").value = event.serialNumber;
     };
-
   } else {
-    alert("HP tidak support NFC Web 😢");
+    alert("HP tidak support NFC");
   }
 }
 </script>
