@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Absensi Pro</title>
+
+  <script src="https://unpkg.com/html5-qrcode"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/face-api.js"></script>
+
+</head>
+
+<body style="text-align:center;font-family:Arial">
+
+<h2>ABSENSI KARYAWAN</h2>
+
+<button onclick="scanNFC()">📡 NFC</button><br><br>
+<button onclick="startQR()">📷 QR</button><br><br>
+
+<input type="text" id="uid" placeholder="Input UID">
+<button onclick="absenManual()">ABSEN</button>
+
+<br><br>
+
+<video id="video" width="300" autoplay></video><br>
+<button onclick="startCamera()">📸 Kamera</button>
+<button onclick="verifyAll()">✅ Verifikasi & Absen</button>
+
+<div id="reader" style="width:300px;margin:auto;"></div>
+<div id="hasil"></div>
+
+<script>
+
+const API = "ISI_URL_KAMU";
+
+let pendingData = null;
+let referenceDescriptor = null;
+
+// ================= CHECK DATA =================
+function kirim(uid){
+  fetch(API + "?uid=" + uid + "&mode=check")
+    .then(res => res.json())
+    .then(async data => {
+
+      if (data.status !== "found") {
+        alert("Tidak ditemukan");
+        return;
+      }
+
+      pendingData = data;
+
+      document.getElementById("hasil").innerHTML = `
+        <img src="${data.foto}" width="120"><br>
+        <b>${data.nama}</b><br>
+        ${data.jabatan}<br><br>
+        🔒 Menunggu verifikasi
+      `;
+
+      referenceDescriptor = await loadReferenceImage(data.foto);
+    });
+}
+
+function absenManual(){
+  kirim(document.getElementById("uid").value);
+}
+
+// ================= NFC =================
+async function scanNFC(){
+  try{
+    const ndef = new NDEFReader();
+    await ndef.scan();
+
+    ndef.onreading = e => kirim(e.serialNumber);
+
+  }catch{
+    alert("NFC tidak support");
+  }
+}
+
+// ================= QR =================
+function startQR(){
+  const qr = new Html5Qrcode("reader");
+
+  qr.start({ facingMode: "environment" }, { fps: 10 },
+    text => {
+      kirim(text);
+      qr.stop();
+    });
+}
+
+// ================= CAMERA =================
+async function startCamera(){
+  const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+  document.getElementById('video').srcObject = stream;
+
+  await faceapi.nets.tinyFaceDetector.loadFromUri('https://cdn.jsdelivr.net/npm/face-api.js/models');
+  await faceapi.nets.faceRecognitionNet.loadFromUri('https://cdn.jsdelivr.net/npm/face-api.js/models');
+  await faceapi.nets.faceLandmark68Net.loadFromUri('https://cdn.jsdelivr.net/npm/face-api.js/models');
+}
+
+// ================= FACE =================
+async function loadReferenceImage(url){
+  const img = await faceapi.fetchImage(url);
+  const d = await faceapi.detectSingleFace(img).withFaceLandmarks().withFaceDescriptor();
+  return d.descriptor;
+}
+
+// ================= GPS =================
+function getLocation(){
+  return new Promise((res, rej)=>{
+    navigator.geolocation.getCurrentPosition(
+      pos => res(pos.coords),
+      err => rej(err)
+    );
+  });
+}
+
+function getDistance(lat1, lon1, lat2, lon2){
+  const R = 6371e3;
+  const toRad = x => x*Math.PI/180;
+
+  const dLat = toRad(lat2-lat1);
+  const dLon = toRad(lon2-lon1);
+
+  const a = Math.sin(dLat/2)**2 +
+    Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*
+    Math.sin(dLon/2)**2;
+
+  return R * (2*Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
+}
+
+// ================= FINAL VERIFY =================
+async function verifyAll(){
+
+  if(!pendingData){
+    alert("Scan dulu");
+    return;
+  }
+
+  const video = document.getElementById('video');
+
+  const d = await faceapi.detectSingleFace(video)
+    .withFaceLandmarks().withFaceDescriptor();
+
+  if(!d){
+    alert("Wajah tidak terdeteksi");
+    return;
+  }
+
+  const distFace = faceapi.euclideanDistance(d.descriptor, referenceDescriptor);
+
+  if(distFace > 0.5){
+    alert("Wajah tidak cocok");
+    return;
+  }
+
+  let loc = await getLocation();
+
+  const jarak = getDistance(
+    loc.latitude,
+    loc.longitude,
+    pendingData.lat,
+    pendingData.lng
+  );
+
+  if(jarak > 10){
+    alert("Di luar area (" + Math.round(jarak) + " m)");
+    return;
+  }
+
+  // ================= ABSEN =================
+  fetch(API + "?uid=" + pendingData.id + "&mode=absen&lat=" + loc.latitude + "&lng=" + loc.longitude)
+    .then(r=>r.json())
+    .then(data=>{
+      alert("✅ " + data.kehadiran);
+    });
+}
+
+</script>
+
+</body>
+</html>
