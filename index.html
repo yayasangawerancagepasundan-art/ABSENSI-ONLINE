@@ -6,6 +6,7 @@
 <title>Absensi NFC</title>
 
 <style>
+/* 🔹 Tampilan sederhana */
 body { font-family: Arial; text-align:center; background:#f5f5f5; }
 .box { max-width:400px; margin:auto; padding:20px; }
 input, button { width:90%; padding:12px; margin:5px; font-size:16px; }
@@ -19,95 +20,158 @@ img { width:100px; border-radius:10px; }
 <div class="box">
 <h2>ABSENSI KARYAWAN</h2>
 
+<!-- 🔹 Input UID (manual / hasil NFC) -->
 <input id="uid" placeholder="Scan / Input UID">
+
+<!-- 🔹 Tombol absen -->
 <button onclick="absen()">ABSEN</button>
+
+<!-- 🔹 Tombol scan NFC -->
 <button onclick="scanNFC()">📶 Scan NFC</button>
 
+<!-- 🔹 Status proses -->
 <p id="status"></p>
 
+<!-- 🔹 Hasil data -->
 <div id="hasil" class="card" style="display:none;">
-<img id="foto">
-<h3 id="nama"></h3>
-<p id="jabatan"></p>
-<p id="info"></p>
+  <img id="foto">
+  <h3 id="nama"></h3>
+  <p id="jabatan"></p>
+  <p id="info"></p>
 </div>
 
 </div>
 
 <script>
+
+/* 🔹 URL API Apps Script */
 const API_URL = "https://script.google.com/macros/s/AKfycbxEzs-krfZ8i12sbVaw5bo_HQEY7HNKxcIXpBmcdDpNvR8ckTgypRqz46gmX1590EM/exec";
 
+/* =====================================================
+   🔥 FUNCTION UTAMA ABSEN
+===================================================== */
 async function absen() {
+
   let uid = document.getElementById("uid").value;
   let status = document.getElementById("status");
 
+  /* 🔹 Validasi UID */
   if (!uid) {
     status.innerHTML = "❌ UID kosong";
     return;
   }
 
+  /* 🔹 Rapikan UID (biar cocok di database) */
+  uid = uid.toLowerCase().trim();
+
   status.innerHTML = "📍 Mengambil lokasi...";
 
-  navigator.geolocation.getCurrentPosition(async (pos) => {
+  /* 🔹 Ambil lokasi GPS */
+  navigator.geolocation.getCurrentPosition(
 
-    let lat = pos.coords.latitude;
-    let lng = pos.coords.longitude;
+    /* =========================
+       ✅ JIKA LOKASI BERHASIL
+    ========================= */
+    async (pos) => {
 
-    status.innerHTML = "⏳ Proses...";
+      let lat = pos.coords.latitude;
+      let lng = pos.coords.longitude;
 
-try {
-  let res = await fetch(`${API_URL}?uid=${uid}`);
-  let text = await res.text();        // 🔥 WAJIB
-  let data = JSON.parse(text);
+      status.innerHTML = "⏳ Menghubungi server...";
 
-  console.log(data);
+      try {
 
-  if (data.status === "success") {
+        /* 🔹 Ambil data dari Apps Script */
+        let res = await fetch(`${API_URL}?uid=${uid}`);
 
-    // 🔥 cek jarak di sini (lokal)
-    let jarak = getDistance(lat, lng, data.lat, data.lng);
+        /* 🔥 WAJIB pakai text (biar tidak error di HP) */
+        let text = await res.text();
+        let data = JSON.parse(text);
 
-    if (jarak > 5) {
-      status.innerHTML = "❌ Di luar radius (" + Math.round(jarak) + " m)";
-      return;
+        console.log(data);
+
+        /* =========================
+           ✅ JIKA DATA DITEMUKAN
+        ========================= */
+        if (data.status === "success") {
+
+          /* 🔹 Hitung jarak user ke lokasi kantor */
+          let jarak = getDistance(lat, lng, data.lat, data.lng);
+
+          /* 🔹 Validasi radius 5 meter */
+          if (jarak > 5) {
+            status.innerHTML = "❌ Di luar radius (" + Math.round(jarak) + " m)";
+            return;
+          }
+
+          /* 🔹 Tampilkan hasil */
+          status.innerHTML = "✅ Berhasil";
+
+          document.getElementById("hasil").style.display = "block";
+          document.getElementById("nama").innerText = data.nama;
+          document.getElementById("jabatan").innerText = data.jabatan;
+
+          /* 🔹 Foto (fallback jika kosong) */
+          document.getElementById("foto").src =
+            data.foto || "https://via.placeholder.com/100";
+
+          /* 🔹 Info waktu */
+          document.getElementById("info").innerText =
+            "Masuk | " + new Date().toLocaleTimeString();
+
+        } else {
+          status.innerHTML = "❌ RFID tidak ditemukan";
+        }
+
+      } catch (err) {
+        console.error(err);
+        status.innerHTML = "❌ Error koneksi";
+      }
+
+    },
+
+    /* =========================
+       ❌ JIKA LOKASI GAGAL
+    ========================= */
+    (err) => {
+      console.error(err);
+      status.innerHTML = "❌ Gagal ambil lokasi (izin ditolak / GPS mati)";
+    },
+
+    /* 🔹 Setting GPS biar cepat */
+    {
+      enableHighAccuracy: false,
+      timeout: 5000,
+      maximumAge: 0
     }
-
-    status.innerHTML = "✅ Berhasil";
-
-    document.getElementById("hasil").style.display = "block";
-    document.getElementById("nama").innerText = data.nama;
-    document.getElementById("jabatan").innerText = data.jabatan;
-    document.getElementById("foto").src = data.foto;
-    document.getElementById("info").innerText =
-      "Masuk | " + new Date().toLocaleTimeString();
-
-  } else {
-    status.innerHTML = "❌ RFID tidak ditemukan";
-  }
-
-} catch (err) {
-  console.error(err);
-  status.innerHTML = "❌ Error koneksi";
+  );
 }
 
-  });
-}
-
-// NFC
+/* =====================================================
+   📶 FUNCTION NFC
+===================================================== */
 async function scanNFC() {
   if ('NDEFReader' in window) {
+
     const reader = new NDEFReader();
     await reader.scan();
 
     reader.onreading = event => {
       document.getElementById("uid").value = event.serialNumber;
     };
+
   } else {
     alert("HP tidak support NFC");
   }
 }
-  function getDistance(lat1, lon1, lat2, lon2) {
-  const R = 6371000;
+
+/* =====================================================
+   📍 FUNCTION HITUNG JARAK (Haversine)
+===================================================== */
+function getDistance(lat1, lon1, lat2, lon2) {
+
+  const R = 6371000; // meter
+
   const dLat = (lat2-lat1) * Math.PI/180;
   const dLon = (lon2-lon1) * Math.PI/180;
 
@@ -118,8 +182,10 @@ async function scanNFC() {
     Math.sin(dLon/2) * Math.sin(dLon/2);
 
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
   return R * c;
 }
+
 </script>
 
 </body>
