@@ -13,8 +13,11 @@
       background: #0f172a;
       color: white;
       text-align: center;
-      padding: 30px 20px;
+      margin: 0;
+      padding: 20px;
     }
+
+    .hidden { display: none; }
 
     .btn {
       padding: 10px 16px;
@@ -39,14 +42,16 @@
       background: #22c55e;
     }
 
-    img {
-      width: 90px;
+    video {
+      width: 100%;
+      height: auto;
       border-radius: 10px;
-      margin: 5px;
     }
 
-    .hidden {
-      display: none;
+    img {
+      width: 100px;
+      border-radius: 10px;
+      margin: 5px;
     }
   </style>
 </head>
@@ -54,13 +59,13 @@
 <body>
 
 <!-- =========================
-     HALAMAN SCAN
+     PAGE 1: SCAN
 ========================= -->
 <div id="scanPage">
 
   <h2><i class="fa-solid fa-id-card"></i> Absensi</h2>
 
-  <!-- UID tampil (tidak bisa diedit) -->
+  <!-- UID tampil -->
   <p>UID: <span id="uid">-</span></p>
 
   <button class="btn" onclick="startScan()">Scan Kartu</button>
@@ -74,7 +79,21 @@
 </div>
 
 <!-- =========================
-     HALAMAN HASIL
+     PAGE 2: CAMERA
+========================= -->
+<div id="cameraPage" class="hidden">
+
+  <h3>📸 Ambil Foto</h3>
+
+  <!-- VIDEO KAMERA -->
+  <video id="video" autoplay playsinline></video>
+
+  <p id="cameraStatus">Arahkan wajah ke kamera</p>
+
+</div>
+
+<!-- =========================
+     PAGE 3: RESULT
 ========================= -->
 <div id="resultPage" class="hidden">
 
@@ -97,12 +116,27 @@ let stream;
 /* =========================
    PROGRESS BAR
 ========================= */
-function loading(persen) {
-  document.getElementById("bar").style.width = persen + "%";
+function loading(p) {
+  document.getElementById("bar").style.width = p + "%";
 }
 
 /* =========================
-   PINDAH KE HALAMAN HASIL
+   RESET UI KE AWAL
+========================= */
+function resetUI() {
+
+  document.getElementById("scanPage").classList.remove("hidden");
+  document.getElementById("cameraPage").classList.add("hidden");
+  document.getElementById("resultPage").classList.add("hidden");
+
+  document.getElementById("uid").innerText = "-";
+  document.getElementById("status").innerText = "Menunggu...";
+  document.getElementById("bar").style.width = "0%";
+
+}
+
+/* =========================
+   PINDAH KE RESULT
 ========================= */
 function showResult(data, foto) {
 
@@ -111,25 +145,11 @@ function showResult(data, foto) {
   document.getElementById("fotoDB").src = data.fotoDB;
   document.getElementById("fotoSelfie").src = foto;
 
-  document.getElementById("scanPage").classList.add("hidden");
+  document.getElementById("cameraPage").classList.add("hidden");
   document.getElementById("resultPage").classList.remove("hidden");
 
-  // kembali ke awal setelah 3 detik
+  // auto kembali
   setTimeout(resetUI, 3000);
-}
-
-/* =========================
-   RESET UI
-========================= */
-function resetUI() {
-
-  document.getElementById("scanPage").classList.remove("hidden");
-  document.getElementById("resultPage").classList.add("hidden");
-
-  document.getElementById("uid").innerText = "-";
-  document.getElementById("status").innerText = "Menunggu...";
-  document.getElementById("bar").style.width = "0%";
-
 }
 
 /* =========================
@@ -154,32 +174,29 @@ function ambilFoto(video) {
 ========================= */
 async function tungguWajah(video) {
 
-  // cek apakah HP support face detection
   if (!("FaceDetector" in window)) {
 
-    document.getElementById("status").innerText = "Mode standar...";
+    document.getElementById("cameraStatus").innerText = "Mode standar...";
 
-    // fallback: tetap foto tapi delay
+    // fallback kalau tidak support
     setTimeout(() => ambilFoto(video), 1500);
     return;
   }
 
   const detector = new FaceDetector();
 
-  document.getElementById("status").innerText = "Arahkan wajah...";
+  document.getElementById("cameraStatus").innerText = "Mendeteksi wajah...";
 
   const interval = setInterval(async () => {
 
     const faces = await detector.detect(video);
 
-    // kalau wajah terdeteksi
     if (faces.length > 0) {
 
       clearInterval(interval);
 
-      document.getElementById("status").innerText = "Wajah terdeteksi";
+      document.getElementById("cameraStatus").innerText = "Wajah terdeteksi";
 
-      // delay sedikit biar posisi stabil
       setTimeout(() => {
         ambilFoto(video);
       }, 800);
@@ -195,7 +212,7 @@ async function tungguWajah(video) {
 async function kirimData(foto) {
 
   loading(70);
-  document.getElementById("status").innerText = "Kirim data...";
+  document.getElementById("cameraStatus").innerText = "Mengirim data...";
 
   let res = await fetch("https://script.google.com/macros/s/AKfycbxQYvZIxsv-KrVS2k3wKtmAtq3iOQuoz2PErPJP764YIvOiKv8lvx8IcFO44-tQc4A/exec", {
     method: "POST",
@@ -219,19 +236,19 @@ async function kirimData(foto) {
   }
 
   if (data.status === "OUT_OF_RANGE") {
-    document.getElementById("status").innerText =
-      "Diluar area (" + Math.round(data.jarak) + "m)";
+    alert("Diluar area (" + Math.round(data.jarak) + "m)");
+    resetUI();
   }
 
   if (data.status === "NOT_REGISTERED") {
-    document.getElementById("status").innerText =
-      "Kartu tidak terdaftar";
+    alert("Kartu tidak terdaftar");
+    resetUI();
   }
 
 }
 
 /* =========================
-   START NFC
+   START NFC SCAN
 ========================= */
 async function startScan() {
 
@@ -245,7 +262,6 @@ async function startScan() {
 
     ndef.onreading = async (event) => {
 
-      // ambil UID kartu
       let uid = event.serialNumber;
       window.uid = uid;
 
@@ -260,16 +276,18 @@ async function startScan() {
         window.lng = pos.coords.longitude;
 
         loading(50);
-        document.getElementById("status").innerText = "Buka kamera...";
+
+        // pindah ke halaman kamera
+        document.getElementById("scanPage").classList.add("hidden");
+        document.getElementById("cameraPage").classList.remove("hidden");
 
         // buka kamera
         stream = await navigator.mediaDevices.getUserMedia({ video: true });
 
-        let video = document.createElement("video");
+        let video = document.getElementById("video");
         video.srcObject = stream;
-        video.play();
 
-        // tunggu wajah sebelum foto
+        // tunggu wajah
         tungguWajah(video);
 
       });
