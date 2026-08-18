@@ -79,13 +79,11 @@ const URL = "https://script.google.com/macros/s/AKfycbznCmA9JKgrMSklIBvN8y7fpqGJ
 
 let stream;
 
-/* ================= NFC ================= */
+/* NFC */
 async function startScan(){
   try{
     const ndef = new NDEFReader();
     await ndef.scan();
-
-    document.getElementById("status").innerText = "Tempel kartu...";
 
     ndef.onreading = (e)=>{
       window.uid = e.serialNumber;
@@ -100,7 +98,7 @@ async function startScan(){
   }
 }
 
-/* ================= LOKASI ================= */
+/* LOKASI */
 function getLocation(){
 
 navigator.geolocation.getCurrentPosition(async(pos)=>{
@@ -110,19 +108,17 @@ navigator.geolocation.getCurrentPosition(async(pos)=>{
 
   document.getElementById("status").innerText = "Validasi lokasi...";
 
+  let form = new URLSearchParams();
+  form.append("step","cek");
+  form.append("uid",window.uid);
+  form.append("lat",window.lat);
+  form.append("lng",window.lng);
+
   try{
 
     let res = await fetch(URL,{
       method:"POST",
-      headers:{
-        "Content-Type":"application/json"
-      },
-      body: JSON.stringify({
-        step:"cek",
-        uid:window.uid,
-        lat:window.lat,
-        lng:window.lng
-      })
+      body: form
     });
 
     let data = await res.json();
@@ -143,7 +139,7 @@ navigator.geolocation.getCurrentPosition(async(pos)=>{
 });
 }
 
-/* ================= CAMERA ================= */
+/* CAMERA */
 async function openCamera(){
 
 show("camPage");
@@ -156,7 +152,7 @@ video.srcObject = stream;
 setTimeout(()=>takePhoto(video),2000);
 }
 
-/* ================= FOTO ================= */
+/* FOTO */
 function takePhoto(video){
 
 let canvas = document.createElement("canvas");
@@ -165,28 +161,26 @@ canvas.height = video.videoHeight;
 
 canvas.getContext("2d").drawImage(video,0,0);
 
-let foto = canvas.toDataURL("image/jpeg",0.6);
+let foto = canvas.toDataURL("image/jpeg",0.5);
 
 sendData(foto);
 }
 
-/* ================= SEND ================= */
+/* KIRIM */
 async function sendData(foto){
+
+let form = new URLSearchParams();
+form.append("step","absen");
+form.append("uid",window.uid);
+form.append("lat",window.lat);
+form.append("lng",window.lng);
+form.append("foto",foto);
 
 try{
 
 let res = await fetch(URL,{
   method:"POST",
-  headers:{
-    "Content-Type":"application/json"
-  },
-  body: JSON.stringify({
-    step:"absen",
-    uid:window.uid,
-    lat:window.lat,
-    lng:window.lng,
-    foto:foto
-  })
+  body: form
 });
 
 let data = await res.json();
@@ -207,7 +201,7 @@ if(data.status === "SUCCESS"){
 
 }
 
-/* ================= UI ================= */
+/* UI */
 function show(id){
   document.querySelectorAll("div").forEach(d=>d.classList.add("hidden"));
   document.getElementById(id).classList.remove("hidden");
