@@ -1,179 +1,103 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Absensi Pro</title>
+  <meta charset="UTF-8">
+  <title>ABSENSI KARYAWAN</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <script src="https://unpkg.com/html5-qrcode"></script>
-  <script defer src="https://cdn.jsdelivr.net/npm/face-api.js"></script>
+  <style>
+    body {
+      font-family: Arial;
+      text-align: center;
+      padding: 20px;
+    }
 
+    h1 {
+      margin-bottom: 20px;
+    }
+
+    input {
+      padding: 10px;
+      width: 80%;
+      max-width: 300px;
+      margin-bottom: 10px;
+    }
+
+    button {
+      padding: 10px 20px;
+      margin: 5px;
+      cursor: pointer;
+    }
+
+    #status {
+      margin-top: 20px;
+      font-weight: bold;
+    }
+  </style>
 </head>
 
-<body style="text-align:center;font-family:Arial">
+<body>
 
-<h2>ABSENSI KARYAWAN</h2>
+<h1>ABSENSI KARYAWAN</h1>
 
-<button onclick="scanNFC()">📡 NFC</button><br><br>
-<button onclick="startQR()">📷 QR</button><br><br>
+<input type="text" id="uid" placeholder="Input UID / RFID">
+<br>
 
-<input type="text" id="uid" placeholder="Input UID">
-<button onclick="absenManual()">ABSEN</button>
+<button onclick="absen()">ABSEN</button>
 
 <br><br>
 
-<video id="video" width="300" autoplay></video><br>
-<button onclick="startCamera()">📸 Kamera</button>
-<button onclick="verifyAll()">✅ Verifikasi & Absen</button>
+<button onclick="startNFC()">📶 Scan NFC</button>
 
-<div id="reader" style="width:300px;margin:auto;"></div>
-<div id="hasil"></div>
+<p id="status">Status: -</p>
 
 <script>
+const API_URL = "https://script.google.com/macros/s/AKfycbxEzs-krfZ8i12sbVaw5bo_HQEY7HNkxcI/exec";
 
-const API = "ISI_URL_KAMU";
+function absen() {
+  let uid = document.getElementById("uid").value;
 
-let pendingData = null;
-let referenceDescriptor = null;
+  if (!uid) {
+    alert("Masukkan UID dulu!");
+    return;
+  }
 
-// ================= CHECK DATA =================
-function kirim(uid){
-  fetch(API + "?uid=" + uid + "&mode=check")
+  document.getElementById("status").innerText = "⏳ Memproses...";
+
+  fetch(API_URL + "?uid=" + uid)
     .then(res => res.json())
-    .then(async data => {
-
-      if (data.status !== "found") {
-        alert("Tidak ditemukan");
-        return;
-      }
-
-      pendingData = data;
-
-      document.getElementById("hasil").innerHTML = `
-        <img src="${data.foto}" width="120"><br>
-        <b>${data.nama}</b><br>
-        ${data.jabatan}<br><br>
-        🔒 Menunggu verifikasi
-      `;
-
-      referenceDescriptor = await loadReferenceImage(data.foto);
+    .then(data => {
+      document.getElementById("status").innerText = "✅ " + data.status;
+    })
+    .catch(err => {
+      document.getElementById("status").innerText = "❌ Error koneksi";
+      console.log(err);
     });
 }
 
-function absenManual(){
-  kirim(document.getElementById("uid").value);
-}
 
-// ================= NFC =================
-async function scanNFC(){
-  try{
-    const ndef = new NDEFReader();
-    await ndef.scan();
+// NFC (hanya HP Android Chrome)
+async function startNFC() {
+  if ('NDEFReader' in window) {
+    const reader = new NDEFReader();
 
-    ndef.onreading = e => kirim(e.serialNumber);
+    await reader.scan();
 
-  }catch{
-    alert("NFC tidak support");
+    document.getElementById("status").innerText = "📡 Tempel kartu...";
+
+    reader.onreading = event => {
+      let uid = event.serialNumber;
+      document.getElementById("uid").value = uid;
+
+      document.getElementById("status").innerText = "📥 UID terbaca: " + uid;
+
+      absen();
+    };
+
+  } else {
+    alert("HP tidak support NFC Web 😢");
   }
 }
-
-// ================= QR =================
-function startQR(){
-  const qr = new Html5Qrcode("reader");
-
-  qr.start({ facingMode: "environment" }, { fps: 10 },
-    text => {
-      kirim(text);
-      qr.stop();
-    });
-}
-
-// ================= CAMERA =================
-async function startCamera(){
-  const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-  document.getElementById('video').srcObject = stream;
-
-  await faceapi.nets.tinyFaceDetector.loadFromUri('https://cdn.jsdelivr.net/npm/face-api.js/models');
-  await faceapi.nets.faceRecognitionNet.loadFromUri('https://cdn.jsdelivr.net/npm/face-api.js/models');
-  await faceapi.nets.faceLandmark68Net.loadFromUri('https://cdn.jsdelivr.net/npm/face-api.js/models');
-}
-
-// ================= FACE =================
-async function loadReferenceImage(url){
-  const img = await faceapi.fetchImage(url);
-  const d = await faceapi.detectSingleFace(img).withFaceLandmarks().withFaceDescriptor();
-  return d.descriptor;
-}
-
-// ================= GPS =================
-function getLocation(){
-  return new Promise((res, rej)=>{
-    navigator.geolocation.getCurrentPosition(
-      pos => res(pos.coords),
-      err => rej(err)
-    );
-  });
-}
-
-function getDistance(lat1, lon1, lat2, lon2){
-  const R = 6371e3;
-  const toRad = x => x*Math.PI/180;
-
-  const dLat = toRad(lat2-lat1);
-  const dLon = toRad(lon2-lon1);
-
-  const a = Math.sin(dLat/2)**2 +
-    Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*
-    Math.sin(dLon/2)**2;
-
-  return R * (2*Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
-}
-
-// ================= FINAL VERIFY =================
-async function verifyAll(){
-
-  if(!pendingData){
-    alert("Scan dulu");
-    return;
-  }
-
-  const video = document.getElementById('video');
-
-  const d = await faceapi.detectSingleFace(video)
-    .withFaceLandmarks().withFaceDescriptor();
-
-  if(!d){
-    alert("Wajah tidak terdeteksi");
-    return;
-  }
-
-  const distFace = faceapi.euclideanDistance(d.descriptor, referenceDescriptor);
-
-  if(distFace > 0.5){
-    alert("Wajah tidak cocok");
-    return;
-  }
-
-  let loc = await getLocation();
-
-  const jarak = getDistance(
-    loc.latitude,
-    loc.longitude,
-    pendingData.lat,
-    pendingData.lng
-  );
-
-  if(jarak > 10){
-    alert("Di luar area (" + Math.round(jarak) + " m)");
-    return;
-  }
-
-  // ================= ABSEN =================
-  fetch(API + "?uid=" + pendingData.id + "&mode=absen&lat=" + loc.latitude + "&lng=" + loc.longitude)
-    .then(r=>r.json())
-    .then(data=>{
-      alert("✅ " + data.kehadiran);
-    });
-}
-
 </script>
 
 </body>
