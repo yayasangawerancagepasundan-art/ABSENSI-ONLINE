@@ -55,38 +55,40 @@ async function absen() {
 
     status.innerHTML = "⏳ Proses...";
 
-    try {
-      let res = await fetch(`${API_URL}?uid=${uid}&lat=${lat}&lng=${lng}`);
-      let data = await res.json();
+try {
+  let res = await fetch(`${API_URL}?uid=${uid}`);
+  let text = await res.text();        // 🔥 WAJIB
+  let data = JSON.parse(text);
 
-      if (data.status === "out_of_range") {
-        status.innerHTML = "❌ Di luar radius (" + data.jarak + " m)";
-        return;
-      }
+  console.log(data);
 
-      if (data.status === "blocked") {
-        status.innerHTML = "❌ " + data.message;
-        return;
-      }
+  if (data.status === "success") {
 
-      if (data.status === "success") {
+    // 🔥 cek jarak di sini (lokal)
+    let jarak = getDistance(lat, lng, data.lat, data.lng);
 
-        status.innerHTML = "✅ Berhasil";
-
-        document.getElementById("hasil").style.display = "block";
-        document.getElementById("nama").innerText = data.nama;
-        document.getElementById("jabatan").innerText = data.jabatan;
-        document.getElementById("foto").src = data.foto;
-        document.getElementById("info").innerText =
-          data.tipe + " | " + data.waktu;
-
-      } else {
-        status.innerHTML = "❌ RFID tidak ditemukan";
-      }
-
-    } catch {
-      status.innerHTML = "❌ Error koneksi";
+    if (jarak > 5) {
+      status.innerHTML = "❌ Di luar radius (" + Math.round(jarak) + " m)";
+      return;
     }
+
+    status.innerHTML = "✅ Berhasil";
+
+    document.getElementById("hasil").style.display = "block";
+    document.getElementById("nama").innerText = data.nama;
+    document.getElementById("jabatan").innerText = data.jabatan;
+    document.getElementById("foto").src = data.foto;
+    document.getElementById("info").innerText =
+      "Masuk | " + new Date().toLocaleTimeString();
+
+  } else {
+    status.innerHTML = "❌ RFID tidak ditemukan";
+  }
+
+} catch (err) {
+  console.error(err);
+  status.innerHTML = "❌ Error koneksi";
+}
 
   });
 }
@@ -103,6 +105,20 @@ async function scanNFC() {
   } else {
     alert("HP tidak support NFC");
   }
+}
+  function getDistance(lat1, lon1, lat2, lon2) {
+  const R = 6371000;
+  const dLat = (lat2-lat1) * Math.PI/180;
+  const dLon = (lon2-lon1) * Math.PI/180;
+
+  const a =
+    Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(lat1*Math.PI/180) *
+    Math.cos(lat2*Math.PI/180) *
+    Math.sin(dLon/2) * Math.sin(dLon/2);
+
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c;
 }
 </script>
 
