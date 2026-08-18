@@ -4,228 +4,340 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Absensi NFC</title>
 
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
 <style>
 body {
-  font-family: Arial;
-  background: #0f172a;
-  color: white;
-  text-align: center;
+  margin:0;
+  font-family:Arial;
+  background:#0f172a;
+  color:white;
+  text-align:center;
+}
+
+/* PAGE */
+.page { display:none; padding:20px; }
+.active { display:block; }
+
+/* BUTTON */
+.btn {
+  background:#22c55e;
+  padding:10px 20px;
+  border-radius:8px;
+  border:none;
+  color:white;
 }
 
 /* RADAR */
-.radar {
-  width: 200px;
-  height: 200px;
-  border: 2px solid #22c55e;
-  border-radius: 50%;
-  margin: 30px auto;
-  position: relative;
+.radar-wrap {
+  margin-top:30px;
+}
+
+.circle {
+  width:200px;
+  height:200px;
+  border:2px solid #22c55e;
+  border-radius:50%;
+  margin:auto;
+  position:relative;
 }
 
 .scan {
-  width: 100%;
-  height: 100%;
-  background: conic-gradient(#22c55e, transparent);
-  border-radius: 50%;
-  animation: spin 2s linear infinite;
-}
-
-.wave {
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  border: 2px solid rgba(34,197,94,0.3);
-  border-radius: 50%;
-  animation: pulse 2s infinite;
-}
-
-@keyframes spin {
-  100% { transform: rotate(360deg); }
-}
-
-@keyframes pulse {
-  0% { transform: scale(0.5); opacity: 0.7; }
-  100% { transform: scale(1.5); opacity: 0; }
-}
-
-.hidden { display:none; }
-
-video { width:100%; border-radius:10px; }
-
-.btn {
-  padding:10px;
+  width:2px;
+  height:100%;
   background:#22c55e;
-  border:none;
-  border-radius:8px;
-  color:white;
+  position:absolute;
+  left:50%;
+  transform-origin:bottom;
+}
+
+/* CAMERA */
+video {
+  width:100%;
+  border-radius:10px;
+  background:black;
+}
+
+/* RESULT */
+img {
+  width:100px;
+  border-radius:10px;
+  margin:5px;
 }
 </style>
-
 </head>
 
 <body>
 
-<!-- SCAN -->
-<div id="scanPage">
-<h2>Scan Kartu</h2>
-<p id="uid">-</p>
-<button class="btn" onclick="startScan()">Scan</button>
+<!-- ================= SCAN ================= -->
+<div id="scanPage" class="page active">
+
+  <h2><i class="fa-solid fa-id-card"></i> Absensi</h2>
+
+  <p>UID: <span id="uid">-</span></p>
+
+  <button class="btn" onclick="startScan()">Scan Kartu</button>
+
+  <p id="status">Menunggu...</p>
+
 </div>
 
-<!-- LOKASI -->
-<div id="locationPage" class="hidden">
-<h3>Cek Lokasi</h3>
+<!-- ================= LOKASI ================= -->
+<div id="locationPage" class="page">
 
-<div class="radar" id="radar">
-<div class="scan"></div>
-<div class="wave"></div>
+  <h2>📍 Cek Lokasi</h2>
+
+  <div class="radar-wrap">
+    <div class="circle">
+      <div class="scan" id="radar"></div>
+    </div>
+  </div>
+
+  <p id="locationStatus">Mengambil lokasi...</p>
+  <p id="jarakInfo"></p>
+
 </div>
 
-<p id="statusLokasi">Mencari lokasi...</p>
-<p id="jarak"></p>
+<!-- ================= CAMERA ================= -->
+<div id="cameraPage" class="page">
+
+  <h2>📸 Ambil Foto</h2>
+
+  <video id="video" autoplay playsinline></video>
+
+  <p id="cameraStatus">Arahkan wajah ke kamera</p>
+
 </div>
 
-<!-- KAMERA -->
-<div id="cameraPage" class="hidden">
-<h3>Ambil Foto</h3>
-<video id="video" autoplay playsinline></video>
-<p>Arahkan wajah ke kamera</p>
-<button class="btn" onclick="ambilFoto()">Manual</button>
-</div>
+<!-- ================= RESULT ================= -->
+<div id="resultPage" class="page">
 
-<!-- RESULT -->
-<div id="resultPage" class="hidden">
-<h3>Berhasil</h3>
-<p id="nama"></p>
-<p id="gudang"></p>
-<img id="fotoDB">
-<img id="fotoSelfie">
+  <h2>✅ Berhasil</h2>
+
+  <p id="nama"></p>
+  <p id="gudang"></p>
+
+  <div>
+    <img id="fotoDB">
+    <img id="fotoSelfie">
+  </div>
+
 </div>
 
 <script>
 
+// ================= CONFIG =================
+const URL_SCRIPT = "https://script.google.com/macros/s/AKfycbxQYvZIxsv-KrVS2k3wKtmAtq3iOQuoz2PErPJP764YIvOiKv8lvx8IcFO44-tQc4A/exec";
+
 let stream;
+let radarInterval;
 
-/* SCAN NFC */
-async function startScan() {
-
-  const ndef = new NDEFReader();
-  await ndef.scan();
-
-  ndef.onreading = (event) => {
-
-    window.uid = event.serialNumber;
-    document.getElementById("uid").innerText = window.uid;
-
-    showPage("locationPage");
-    getLocation();
-
-  };
+// ================= NAVIGATION =================
+function show(page){
+  document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));
+  document.getElementById(page).classList.add("active");
 }
 
-/* PINDAH PAGE */
-function showPage(id) {
-  document.querySelectorAll("div").forEach(d => d.classList.add("hidden"));
-  document.getElementById(id).classList.remove("hidden");
+// ================= RESET =================
+function resetUI(){
+  show("scanPage");
+  document.getElementById("uid").innerText = "-";
+  document.getElementById("status").innerText = "Menunggu...";
 }
 
-/* LOKASI */
-function getLocation() {
+// ================= RADAR =================
+function startRadar(){
+  let angle = 0;
+  radarInterval = setInterval(()=>{
+    angle += 5;
+    document.getElementById("radar").style.transform = "rotate("+angle+"deg)";
+  },30);
+}
 
-  navigator.geolocation.getCurrentPosition(async (pos) => {
+function stopRadar(){
+  clearInterval(radarInterval);
+}
+
+// ================= NFC =================
+async function startScan(){
+
+  try{
+    const ndef = new NDEFReader();
+    await ndef.scan();
+
+    document.getElementById("status").innerText = "Tempel kartu...";
+
+    ndef.onreading = (event)=>{
+
+      window.uid = event.serialNumber;
+      document.getElementById("uid").innerText = window.uid;
+
+      // pindah ke lokasi
+      show("locationPage");
+      cekLokasi();
+
+    };
+
+  }catch{
+    alert("HP tidak support NFC");
+  }
+}
+
+// ================= LOKASI =================
+function cekLokasi(){
+
+  startRadar();
+  document.getElementById("locationStatus").innerText = "Mengambil lokasi...";
+
+  navigator.geolocation.getCurrentPosition(async(pos)=>{
 
     window.lat = pos.coords.latitude;
     window.lng = pos.coords.longitude;
 
-    let res = await fetch(
-      "https://script.google.com/macros/s/AKfycbxQYvZIxsv-KrVS2k3wKtmAtq3iOQuoz2PErPJP764YIvOiKv8lvx8IcFO44-tQc4A/exec"
-      + "?uid=" + window.uid
-      + "&lat=" + window.lat
-      + "&lng=" + window.lng
-    );
+    document.getElementById("locationStatus").innerText = "Validasi lokasi...";
 
-    let data = await res.json();
+    try{
 
-    document.getElementById("jarak").innerText =
-      "Jarak: " + Math.round(data.jarak) + " m";
+      const res = await fetch(
+        URL_SCRIPT + "?uid="+window.uid+"&lat="+window.lat+"&lng="+window.lng
+      );
 
-    if (data.status === "OUT_OF_RANGE") {
-      document.getElementById("statusLokasi").innerText = "Diluar area";
-      setTimeout(() => showPage("scanPage"), 2000);
-      return;
+      const text = await res.text();
+      console.log(text);
+
+      let data;
+      try { data = JSON.parse(text); } catch {}
+
+      // ❌ tidak terdaftar
+      if(text.includes("NOT_REGISTERED")){
+        stopRadar();
+        alert("Kartu tidak terdaftar");
+        resetUI();
+        return;
+      }
+
+      // ❌ diluar area
+      if(data && data.status === "OUT_OF_RANGE"){
+        stopRadar();
+        document.getElementById("jarakInfo").innerText =
+          "Jarak: "+Math.round(data.jarak)+" meter";
+
+        alert("Diluar area");
+        resetUI();
+        return;
+      }
+
+      // ✅ lanjut kamera
+      stopRadar();
+      show("cameraPage");
+      startCamera();
+
+    }catch(err){
+      stopRadar();
+      alert("Gagal koneksi server");
+      resetUI();
     }
 
-    if (data.status === "IN_RANGE") {
-
-      window.nama = data.nama;
-      window.gudang = data.gudang;
-      window.fotoDB = data.fotoDB;
-
-      document.getElementById("statusLokasi").innerText = "Dalam area";
-
-      setTimeout(startCamera, 1000);
-    }
-
+  }, ()=>{
+    stopRadar();
+    alert("GPS tidak aktif");
+    resetUI();
   });
+
 }
 
-/* KAMERA */
-async function startCamera() {
+// ================= CAMERA =================
+async function startCamera(){
 
-  showPage("cameraPage");
+  try{
+    stream = await navigator.mediaDevices.getUserMedia({video:true});
+    const video = document.getElementById("video");
+    video.srcObject = stream;
 
-  stream = await navigator.mediaDevices.getUserMedia({ video:true });
+    tungguWajah(video);
 
-  let video = document.getElementById("video");
-  video.srcObject = stream;
-
-  setTimeout(ambilFoto, 3000);
+  }catch{
+    alert("Kamera gagal");
+    resetUI();
+  }
 }
 
-/* FOTO */
-function ambilFoto() {
+// ================= FACE DETECT =================
+async function tungguWajah(video){
 
-  let video = document.getElementById("video");
+  if(!("FaceDetector" in window)){
+    setTimeout(()=>ambilFoto(video),2000);
+    return;
+  }
+
+  const detector = new FaceDetector();
+
+  const interval = setInterval(async()=>{
+
+    const faces = await detector.detect(video);
+
+    if(faces.length > 0){
+      clearInterval(interval);
+      ambilFoto(video);
+    }
+
+  },500);
+}
+
+// ================= FOTO =================
+function ambilFoto(video){
 
   let canvas = document.createElement("canvas");
   canvas.width = video.videoWidth;
   canvas.height = video.videoHeight;
 
-  canvas.getContext("2d").drawImage(video,0,0);
+  let ctx = canvas.getContext("2d");
+  ctx.drawImage(video,0,0);
 
   let foto = canvas.toDataURL("image/jpeg");
 
   kirimData(foto);
 }
 
-/* KIRIM */
-async function kirimData(foto) {
+// ================= KIRIM =================
+async function kirimData(foto){
 
-  let res = await fetch(
-    "https://script.google.com/macros/s/AKfycbxQYvZIxsv-KrVS2k3wKtmAtq3iOQuoz2PErPJP764YIvOiKv8lvx8IcFO44-tQc4A/exec",
-    {
-      method:"POST",
-      body: JSON.stringify({
-        uid: window.uid,
-        nama: window.nama,
-        gudang: window.gudang,
-        lat: window.lat,
-        lng: window.lng,
-        foto: foto
-      })
-    }
-  );
+  document.getElementById("cameraStatus").innerText = "Mengirim...";
 
-  stream.getTracks().forEach(t => t.stop());
+  let res = await fetch(URL_SCRIPT,{
+    method:"POST",
+    body: JSON.stringify({
+      uid: window.uid,
+      lat: window.lat,
+      lng: window.lng,
+      foto: foto
+    })
+  });
 
-  showPage("resultPage");
+  let data = await res.json();
 
-  document.getElementById("nama").innerText = window.nama;
-  document.getElementById("gudang").innerText = window.gudang;
-  document.getElementById("fotoDB").src = window.fotoDB;
+  stream.getTracks().forEach(t=>t.stop());
+
+  if(data.status === "SUCCESS"){
+    tampilHasil(data, foto);
+  }else{
+    alert("Gagal absensi");
+    resetUI();
+  }
+}
+
+// ================= RESULT =================
+function tampilHasil(data, foto){
+
+  show("resultPage");
+
+  document.getElementById("nama").innerText = "Nama: "+data.nama;
+  document.getElementById("gudang").innerText = "Gudang: "+data.gudang;
+
+  document.getElementById("fotoDB").src = data.fotoDB;
   document.getElementById("fotoSelfie").src = foto;
 
-  setTimeout(() => showPage("scanPage"), 3000);
+  setTimeout(resetUI,3000);
 }
 
 </script>
