@@ -1,82 +1,227 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Absensi Karyawan</title>
+  <title>Absensi</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- ICON -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
   <style>
     body {
       font-family: Arial;
-      text-align: center;
-      padding: 20px;
-      background: #f5f5f5;
-    }
-    button {
-      padding: 15px 25px;
-      font-size: 18px;
-      background: green;
+      background: #0f172a;
       color: white;
-      border: none;
-      border-radius: 10px;
+      text-align: center;
+      padding: 30px 20px;
     }
-    .box {
-      margin-top: 20px;
-      padding: 15px;
-      background: white;
+
+    .hidden { display: none; }
+
+    .btn {
+      padding: 12px 18px;
+      background: #22c55e;
+      border: none;
+      border-radius: 8px;
+      color: white;
+      font-size: 14px;
+    }
+
+    .progress {
+      height: 4px;
+      background: #1e293b;
+      margin-top: 15px;
       border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .bar {
+      height: 100%;
+      width: 0%;
+      background: #22c55e;
+    }
+
+    img {
+      width: 90px;
+      border-radius: 10px;
+      margin: 5px;
     }
   </style>
 </head>
 
 <body>
 
-  <h2>ABSENSI KARYAWAN</h2>
+<!-- =========================
+     PAGE 1: SCAN
+========================= -->
+<div id="scanPage">
 
-  <button onclick="kirim()">KIRIM ABSENSI</button>
+  <h2><i class="fa-solid fa-id-card"></i> Absensi</h2>
 
-  <div class="box">
-    <p id="status">Status: -</p>
-    <p id="nama">Nama: -</p>
-    <p id="gudang">Gudang: -</p>
+  <p>UID: <span id="uid">-</span></p>
+
+  <button class="btn" onclick="startScan()">
+    Scan Kartu
+  </button>
+
+  <p id="status">Menunggu...</p>
+
+  <div class="progress">
+    <div class="bar" id="bar"></div>
   </div>
+
+</div>
+
+<!-- =========================
+     PAGE 2: RESULT
+========================= -->
+<div id="resultPage" class="hidden">
+
+  <h3>✅ Berhasil</h3>
+
+  <p id="nama"></p>
+  <p id="gudang"></p>
+
+  <div>
+    <img id="fotoDB">
+    <img id="fotoSelfie">
+  </div>
+
+</div>
 
 <script>
 
-async function kirim() {
+let stream;
 
-  document.getElementById("status").innerText = "Ambil lokasi...";
+/* =========================
+   PROGRESS BAR
+========================= */
+function loading(p) {
+  document.getElementById("bar").style.width = p + "%";
+}
 
-  navigator.geolocation.getCurrentPosition(async function(pos) {
+/* =========================
+   PINDAH KE RESULT PAGE
+========================= */
+function showResult(data, foto) {
 
-    let lat = pos.coords.latitude;
-    let lng = pos.coords.longitude;
+  // isi data
+  document.getElementById("nama").innerText = "Nama: " + data.nama;
+  document.getElementById("gudang").innerText = "Gudang: " + data.gudang;
+  document.getElementById("fotoDB").src = data.fotoDB;
+  document.getElementById("fotoSelfie").src = foto;
 
-    // UID sementara (nanti diganti NFC)
-    let uid = "dd:b0:b2:06";
+  // switch halaman
+  document.getElementById("scanPage").classList.add("hidden");
+  document.getElementById("resultPage").classList.remove("hidden");
 
-    document.getElementById("status").innerText = "Kirim ke server...";
+  // balik lagi setelah 3 detik
+  setTimeout(resetUI, 3000);
+}
 
-    let res = await fetch("https://script.google.com/macros/s/AKfycbxQYvZIxsv-KrVS2k3wKtmAtq3iOQuoz2PErPJP764YIvOiKv8lvx8IcFO44-tQc4A/exec", {
-      method: "POST",
-      body: JSON.stringify({
-        uid: uid,
-        lat: lat,
-        lng: lng
-      })
-    });
+/* =========================
+   RESET KE AWAL
+========================= */
+function resetUI() {
 
-    let data = await res.json();
+  document.getElementById("scanPage").classList.remove("hidden");
+  document.getElementById("resultPage").classList.add("hidden");
 
-    if (data.status == "SUCCESS") {
-      document.getElementById("status").innerText = "Berhasil";
-      document.getElementById("nama").innerText = "Nama: " + data.nama;
-      document.getElementById("gudang").innerText = "Gudang: " + data.gudang;
-    } else {
-      document.getElementById("status").innerText = "Tidak terdaftar";
-    }
+  document.getElementById("uid").innerText = "-";
+  document.getElementById("status").innerText = "Menunggu...";
+  document.getElementById("bar").style.width = "0%";
 
-  }, function() {
-    alert("Gagal ambil lokasi");
-  });
+}
+
+/* =========================
+   START NFC
+========================= */
+async function startScan() {
+
+  try {
+    const ndef = new NDEFReader();
+    await ndef.scan();
+
+    document.getElementById("status").innerText = "Tempel kartu...";
+    loading(10);
+
+    ndef.onreading = async (event) => {
+
+      let uid = event.serialNumber;
+      document.getElementById("uid").innerText = uid;
+
+      loading(30);
+      document.getElementById("status").innerText = "Ambil lokasi...";
+
+      navigator.geolocation.getCurrentPosition(async (pos) => {
+
+        let lat = pos.coords.latitude;
+        let lng = pos.coords.longitude;
+
+        loading(50);
+        document.getElementById("status").innerText = "Ambil foto...";
+
+        // buka kamera
+        stream = await navigator.mediaDevices.getUserMedia({ video: true });
+
+        let video = document.createElement("video");
+        video.srcObject = stream;
+        video.play();
+
+        setTimeout(async () => {
+
+          let canvas = document.createElement("canvas");
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+
+          let ctx = canvas.getContext("2d");
+          ctx.drawImage(video, 0, 0);
+
+          let foto = canvas.toDataURL("image/jpeg");
+
+          loading(70);
+          document.getElementById("status").innerText = "Kirim data...";
+
+          let res = await fetch("https://script.google.com/macros/s/AKfycbxQYvZIxsv-KrVS2k3wKtmAtq3iOQuoz2PErPJP764YIvOiKv8lvx8IcFO44-tQc4A/exec", {
+            method: "POST",
+            body: JSON.stringify({
+              uid: uid,
+              lat: lat,
+              lng: lng,
+              foto: foto
+            })
+          });
+
+          let data = await res.json();
+
+          // matikan kamera
+          stream.getTracks().forEach(t => t.stop());
+
+          loading(100);
+
+          if (data.status === "SUCCESS") {
+            showResult(data, foto);
+          }
+
+          if (data.status === "OUT_OF_RANGE") {
+            document.getElementById("status").innerText =
+              "Diluar area (" + Math.round(data.jarak) + "m)";
+          }
+
+          if (data.status === "NOT_REGISTERED") {
+            document.getElementById("status").innerText =
+              "Kartu tidak terdaftar";
+          }
+
+        }, 1000);
+
+      });
+
+    };
+
+  } catch (err) {
+    alert("HP tidak support NFC");
+  }
 
 }
 
