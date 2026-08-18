@@ -11,24 +11,19 @@ async function test(){
 
   try{
 
-    let res = await fetch(URL,{
+    await fetch(URL,{
       method:"POST",
-      headers:{
-        "Content-Type":"application/json"
-      },
+      mode:"no-cors",
       body: JSON.stringify({
         uid:"TEST123"
       })
     });
 
-    let text = await res.text();
-
-    console.log("RESP:", text);
-    alert(text);
+    alert("TERKIRIM ✅");
 
   }catch(e){
-    console.log("ERROR:", e);
-    alert("GAGAL CONNECT");
+    alert("GAGAL ❌");
+    console.log(e);
   }
 
 }
