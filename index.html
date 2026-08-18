@@ -1,338 +1,231 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Absensi NFC</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Absensi NFC</title>
 
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<style>
+body {
+  font-family: Arial;
+  background: #0f172a;
+  color: white;
+  text-align: center;
+}
 
-  <style>
-    body {
-      font-family: Arial;
-      background: #0f172a;
-      color: white;
-      text-align: center;
-      margin: 0;
-      padding: 20px;
-    }
+/* RADAR */
+.radar {
+  width: 200px;
+  height: 200px;
+  border: 2px solid #22c55e;
+  border-radius: 50%;
+  margin: 30px auto;
+  position: relative;
+}
 
-    .hidden { display: none; }
+.scan {
+  width: 100%;
+  height: 100%;
+  background: conic-gradient(#22c55e, transparent);
+  border-radius: 50%;
+  animation: spin 2s linear infinite;
+}
 
-    .btn {
-      padding: 10px 16px;
-      background: #22c55e;
-      border: none;
-      border-radius: 8px;
-      color: white;
-      font-size: 14px;
-    }
+.wave {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border: 2px solid rgba(34,197,94,0.3);
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+}
 
-    /* =========================
-       RADAR
-    ========================= */
-    .radar {
-      width: 200px;
-      height: 200px;
-      border: 2px solid #22c55e;
-      border-radius: 50%;
-      position: relative;
-      margin: 30px auto;
-      overflow: hidden;
-    }
+@keyframes spin {
+  100% { transform: rotate(360deg); }
+}
 
-    .scan {
-      width: 100%;
-      height: 100%;
-      position: absolute;
-      background: conic-gradient(
-        rgba(34,197,94,0.8),
-        rgba(34,197,94,0.2),
-        transparent
-      );
-      border-radius: 50%;
-      animation: scanRotate 2s linear infinite;
-    }
+@keyframes pulse {
+  0% { transform: scale(0.5); opacity: 0.7; }
+  100% { transform: scale(1.5); opacity: 0; }
+}
 
-    .wave {
-      position: absolute;
-      width: 100%;
-      height: 100%;
-      border: 2px solid rgba(34,197,94,0.3);
-      border-radius: 50%;
-      animation: wavePulse 2s infinite;
-    }
+.hidden { display:none; }
 
-    .radar::after {
-      content: "";
-      width: 10px;
-      height: 10px;
-      background: #22c55e;
-      border-radius: 50%;
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-    }
+video { width:100%; border-radius:10px; }
 
-    @keyframes scanRotate {
-      from { transform: rotate(0deg); }
-      to { transform: rotate(360deg); }
-    }
+.btn {
+  padding:10px;
+  background:#22c55e;
+  border:none;
+  border-radius:8px;
+  color:white;
+}
+</style>
 
-    @keyframes wavePulse {
-      0% { transform: scale(0.5); opacity: 0.7; }
-      100% { transform: scale(1.5); opacity: 0; }
-    }
-
-    video {
-      width: 100%;
-      border-radius: 10px;
-      margin-top: 10px;
-    }
-
-    img {
-      width: 100px;
-      border-radius: 10px;
-      margin: 5px;
-    }
-  </style>
 </head>
 
 <body>
 
-<!-- =========================
-   PAGE 1: SCAN
-========================= -->
+<!-- SCAN -->
 <div id="scanPage">
-  <h2><i class="fa-solid fa-id-card"></i> Absensi</h2>
-  <p>UID: <span id="uid">-</span></p>
-  <button class="btn" onclick="startScan()">Scan Kartu</button>
-  <p id="status">Menunggu...</p>
+<h2>Scan Kartu</h2>
+<p id="uid">-</p>
+<button class="btn" onclick="startScan()">Scan</button>
 </div>
 
-<!-- =========================
-   PAGE 2: LOCATION
-========================= -->
+<!-- LOKASI -->
 <div id="locationPage" class="hidden">
-  <h3>📍 Cek Lokasi</h3>
+<h3>Cek Lokasi</h3>
 
-  <div class="radar" id="radarBox">
-    <div class="scan"></div>
-    <div class="wave"></div>
-  </div>
-
-  <p id="locationStatus">Mengambil lokasi...</p>
-  <p id="jarakInfo"></p>
+<div class="radar" id="radar">
+<div class="scan"></div>
+<div class="wave"></div>
 </div>
 
-<!-- =========================
-   PAGE 3: CAMERA
-========================= -->
+<p id="statusLokasi">Mencari lokasi...</p>
+<p id="jarak"></p>
+</div>
+
+<!-- KAMERA -->
 <div id="cameraPage" class="hidden">
-  <h3>📸 Ambil Foto</h3>
-  <video id="video" autoplay playsinline></video>
-  <p id="cameraStatus">Arahkan wajah ke kamera</p>
-
-  <!-- tombol backup -->
-  <button class="btn" onclick="ambilFoto(document.getElementById('video'))">
-    Ambil Manual
-  </button>
+<h3>Ambil Foto</h3>
+<video id="video" autoplay playsinline></video>
+<p>Arahkan wajah ke kamera</p>
+<button class="btn" onclick="ambilFoto()">Manual</button>
 </div>
 
-<!-- =========================
-   PAGE 4: RESULT
-========================= -->
+<!-- RESULT -->
 <div id="resultPage" class="hidden">
-  <h3>✅ Berhasil</h3>
-  <p id="nama"></p>
-  <p id="gudang"></p>
-
-  <div>
-    <img id="fotoDB">
-    <img id="fotoSelfie">
-  </div>
+<h3>Berhasil</h3>
+<p id="nama"></p>
+<p id="gudang"></p>
+<img id="fotoDB">
+<img id="fotoSelfie">
 </div>
 
 <script>
 
 let stream;
 
-/* =========================
-   RESET UI
-========================= */
-function resetUI() {
-  document.getElementById("scanPage").classList.remove("hidden");
-  document.getElementById("locationPage").classList.add("hidden");
-  document.getElementById("cameraPage").classList.add("hidden");
-  document.getElementById("resultPage").classList.add("hidden");
-
-  document.getElementById("uid").innerText = "-";
-}
-
-/* =========================
-   SCAN NFC
-========================= */
+/* SCAN NFC */
 async function startScan() {
 
-  try {
+  const ndef = new NDEFReader();
+  await ndef.scan();
 
-    const ndef = new NDEFReader();
-    await ndef.scan();
+  ndef.onreading = (event) => {
 
-    document.getElementById("status").innerText = "Tempel kartu...";
+    window.uid = event.serialNumber;
+    document.getElementById("uid").innerText = window.uid;
 
-    ndef.onreading = async (event) => {
+    showPage("locationPage");
+    getLocation();
 
-      let uid = event.serialNumber;
-      window.uid = uid;
-
-      document.getElementById("uid").innerText = uid;
-
-      // pindah ke lokasi
-      document.getElementById("scanPage").classList.add("hidden");
-      document.getElementById("locationPage").classList.remove("hidden");
-
-      // FIX radar refresh
-      const radar = document.getElementById("radarBox");
-      radar.style.display = "none";
-      setTimeout(() => radar.style.display = "block", 50);
-
-      ambilLokasi();
-
-    };
-
-  } catch (err) {
-    alert("HP tidak support NFC");
-  }
-
+  };
 }
 
-/* =========================
-   AMBIL LOKASI
-========================= */
-function ambilLokasi() {
+/* PINDAH PAGE */
+function showPage(id) {
+  document.querySelectorAll("div").forEach(d => d.classList.add("hidden"));
+  document.getElementById(id).classList.remove("hidden");
+}
+
+/* LOKASI */
+function getLocation() {
 
   navigator.geolocation.getCurrentPosition(async (pos) => {
 
     window.lat = pos.coords.latitude;
     window.lng = pos.coords.longitude;
 
-    // =========================
-    // CEK KE SERVER (JARAK)
-    // =========================
-    let res = await fetch("YOUR_SCRIPT_URL?uid=" + window.uid + "&lat=" + window.lat + "&lng=" + window.lng);
+    let res = await fetch(
+      "https://script.google.com/macros/s/AKfycbxQYvZIxsv-KrVS2k3wKtmAtq3iOQuoz2PErPJP764YIvOiKv8lvx8IcFO44-tQc4A/exec"
+      + "?uid=" + window.uid
+      + "&lat=" + window.lat
+      + "&lng=" + window.lng
+    );
+
     let data = await res.json();
 
-    document.getElementById("jarakInfo").innerText = "Jarak: " + Math.round(data.jarak) + " m";
+    document.getElementById("jarak").innerText =
+      "Jarak: " + Math.round(data.jarak) + " m";
 
     if (data.status === "OUT_OF_RANGE") {
-
-      document.getElementById("locationStatus").innerHTML = "❌ Diluar area";
-      setTimeout(resetUI, 2000);
+      document.getElementById("statusLokasi").innerText = "Diluar area";
+      setTimeout(() => showPage("scanPage"), 2000);
       return;
     }
 
-    // lanjut kamera
-    document.getElementById("locationPage").classList.add("hidden");
-    document.getElementById("cameraPage").classList.remove("hidden");
+    if (data.status === "IN_RANGE") {
 
-    startCamera();
+      window.nama = data.nama;
+      window.gudang = data.gudang;
+      window.fotoDB = data.fotoDB;
+
+      document.getElementById("statusLokasi").innerText = "Dalam area";
+
+      setTimeout(startCamera, 1000);
+    }
 
   });
-
 }
 
-/* =========================
-   START CAMERA
-========================= */
+/* KAMERA */
 async function startCamera() {
 
-  stream = await navigator.mediaDevices.getUserMedia({ video: true });
+  showPage("cameraPage");
+
+  stream = await navigator.mediaDevices.getUserMedia({ video:true });
 
   let video = document.getElementById("video");
   video.srcObject = stream;
-  video.play();
 
-  tungguWajah(video);
+  setTimeout(ambilFoto, 3000);
 }
 
-/* =========================
-   DETEKSI WAJAH
-========================= */
-async function tungguWajah(video) {
+/* FOTO */
+function ambilFoto() {
 
-  await new Promise(r => video.onloadedmetadata = r);
-
-  if ("FaceDetector" in window) {
-
-    const detector = new FaceDetector();
-
-    const interval = setInterval(async () => {
-
-      const faces = await detector.detect(video);
-
-      if (faces.length > 0) {
-        clearInterval(interval);
-        setTimeout(() => ambilFoto(video), 800);
-      }
-
-    }, 500);
-
-  } else {
-
-    // fallback
-    setTimeout(() => ambilFoto(video), 2500);
-  }
-}
-
-/* =========================
-   AMBIL FOTO
-========================= */
-function ambilFoto(video) {
+  let video = document.getElementById("video");
 
   let canvas = document.createElement("canvas");
   canvas.width = video.videoWidth;
   canvas.height = video.videoHeight;
 
-  let ctx = canvas.getContext("2d");
-  ctx.drawImage(video, 0, 0);
+  canvas.getContext("2d").drawImage(video,0,0);
 
   let foto = canvas.toDataURL("image/jpeg");
 
   kirimData(foto);
 }
 
-/* =========================
-   KIRIM DATA
-========================= */
+/* KIRIM */
 async function kirimData(foto) {
 
-  let res = await fetch("YOUR_SCRIPT_URL", {
-    method: "POST",
-    body: JSON.stringify({
-      uid: window.uid,
-      lat: window.lat,
-      lng: window.lng,
-      foto: foto
-    })
-  });
-
-  let data = await res.json();
+  let res = await fetch(
+    "https://script.google.com/macros/s/AKfycbxQYvZIxsv-KrVS2k3wKtmAtq3iOQuoz2PErPJP764YIvOiKv8lvx8IcFO44-tQc4A/exec",
+    {
+      method:"POST",
+      body: JSON.stringify({
+        uid: window.uid,
+        nama: window.nama,
+        gudang: window.gudang,
+        lat: window.lat,
+        lng: window.lng,
+        foto: foto
+      })
+    }
+  );
 
   stream.getTracks().forEach(t => t.stop());
 
-  if (data.status === "SUCCESS") {
+  showPage("resultPage");
 
-    document.getElementById("cameraPage").classList.add("hidden");
-    document.getElementById("resultPage").classList.remove("hidden");
+  document.getElementById("nama").innerText = window.nama;
+  document.getElementById("gudang").innerText = window.gudang;
+  document.getElementById("fotoDB").src = window.fotoDB;
+  document.getElementById("fotoSelfie").src = foto;
 
-    document.getElementById("nama").innerText = "Nama: " + data.nama;
-    document.getElementById("gudang").innerText = "Gudang: " + data.gudang;
-    document.getElementById("fotoDB").src = data.fotoDB;
-    document.getElementById("fotoSelfie").src = foto;
-
-    setTimeout(resetUI, 3000);
-  }
+  setTimeout(() => showPage("scanPage"), 3000);
 }
 
 </script>
