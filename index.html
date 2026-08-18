@@ -54,9 +54,8 @@ img {
 
 <div class="box">
 
-<!-- ================= HALAMAN ABSEN ================= -->
+<!-- HALAMAN ABSEN -->
 <div id="pageAbsen">
-
 <h2>ABSENSI KARYAWAN</h2>
 
 <input id="uid" placeholder="Scan / Input UID">
@@ -65,17 +64,13 @@ img {
 
 <input type="file" accept="image/*" capture="user" id="fotoSelfie">
 
-<img id="preview" class="hidden">
-
 <button onclick="absen()">ABSEN</button>
 
 <p id="status"></p>
-
 </div>
 
-<!-- ================= HALAMAN HASIL ================= -->
+<!-- HALAMAN HASIL -->
 <div id="pageHasil" class="hidden">
-
 <h2>INFORMASI KARYAWAN</h2>
 
 <div class="card">
@@ -86,7 +81,6 @@ img {
 </div>
 
 <button onclick="resetApp()">🔄 Scan Lagi</button>
-
 </div>
 
 </div>
@@ -158,7 +152,7 @@ async function prosesSelfie(lat, lng) {
       let tanggal = now.toLocaleDateString("id-ID");
       let jam = now.toLocaleTimeString("id-ID");
 
-      // 🔥 box hitam tebal
+      // 🔥 background hitam tebal
       ctx.fillStyle = "black";
       ctx.globalAlpha = 0.9;
       ctx.fillRect(0, canvas.height - 180, canvas.width, 180);
@@ -218,23 +212,19 @@ async function absen() {
 
       let res = await fetch(API_URL, {
         method: "POST",
-
-        // 🔥 FIX CORS
         headers: {
           "Content-Type": "text/plain;charset=utf-8"
         },
-
         body: JSON.stringify({
           uid: uid,
           lat: lat,
           lng: lng,
           foto: base64Foto
-        }),
-
-        redirect: "follow"
+        })
       });
 
-      let data = await res.json();
+      let text = await res.text(); // 🔥 penting
+      let data = JSON.parse(text);
 
       if (data.status === "success") {
 
@@ -255,7 +245,7 @@ async function absen() {
 
     } catch (err) {
       status.innerHTML = "ERROR KONEKSI";
-      console.error(err);
+      console.log(err);
     }
 
     isProcessing = false;
