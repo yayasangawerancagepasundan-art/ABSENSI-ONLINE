@@ -16,10 +16,8 @@
       padding: 30px 20px;
     }
 
-    .hidden { display: none; }
-
     .btn {
-      padding: 12px 18px;
+      padding: 10px 16px;
       background: #22c55e;
       border: none;
       border-radius: 8px;
@@ -46,23 +44,26 @@
       border-radius: 10px;
       margin: 5px;
     }
+
+    .hidden {
+      display: none;
+    }
   </style>
 </head>
 
 <body>
 
 <!-- =========================
-     PAGE 1: SCAN
+     HALAMAN SCAN
 ========================= -->
 <div id="scanPage">
 
   <h2><i class="fa-solid fa-id-card"></i> Absensi</h2>
 
+  <!-- UID tampil (tidak bisa diedit) -->
   <p>UID: <span id="uid">-</span></p>
 
-  <button class="btn" onclick="startScan()">
-    Scan Kartu
-  </button>
+  <button class="btn" onclick="startScan()">Scan Kartu</button>
 
   <p id="status">Menunggu...</p>
 
@@ -73,7 +74,7 @@
 </div>
 
 <!-- =========================
-     PAGE 2: RESULT
+     HALAMAN HASIL
 ========================= -->
 <div id="resultPage" class="hidden">
 
@@ -96,31 +97,29 @@ let stream;
 /* =========================
    PROGRESS BAR
 ========================= */
-function loading(p) {
-  document.getElementById("bar").style.width = p + "%";
+function loading(persen) {
+  document.getElementById("bar").style.width = persen + "%";
 }
 
 /* =========================
-   PINDAH KE RESULT PAGE
+   PINDAH KE HALAMAN HASIL
 ========================= */
 function showResult(data, foto) {
 
-  // isi data
   document.getElementById("nama").innerText = "Nama: " + data.nama;
   document.getElementById("gudang").innerText = "Gudang: " + data.gudang;
   document.getElementById("fotoDB").src = data.fotoDB;
   document.getElementById("fotoSelfie").src = foto;
 
-  // switch halaman
   document.getElementById("scanPage").classList.add("hidden");
   document.getElementById("resultPage").classList.remove("hidden");
 
-  // balik lagi setelah 3 detik
+  // kembali ke awal setelah 3 detik
   setTimeout(resetUI, 3000);
 }
 
 /* =========================
-   RESET KE AWAL
+   RESET UI
 ========================= */
 function resetUI() {
 
@@ -134,11 +133,110 @@ function resetUI() {
 }
 
 /* =========================
+   AMBIL FOTO
+========================= */
+function ambilFoto(video) {
+
+  let canvas = document.createElement("canvas");
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+
+  let ctx = canvas.getContext("2d");
+  ctx.drawImage(video, 0, 0);
+
+  let foto = canvas.toDataURL("image/jpeg");
+
+  kirimData(foto);
+}
+
+/* =========================
+   DETEKSI WAJAH
+========================= */
+async function tungguWajah(video) {
+
+  // cek apakah HP support face detection
+  if (!("FaceDetector" in window)) {
+
+    document.getElementById("status").innerText = "Mode standar...";
+
+    // fallback: tetap foto tapi delay
+    setTimeout(() => ambilFoto(video), 1500);
+    return;
+  }
+
+  const detector = new FaceDetector();
+
+  document.getElementById("status").innerText = "Arahkan wajah...";
+
+  const interval = setInterval(async () => {
+
+    const faces = await detector.detect(video);
+
+    // kalau wajah terdeteksi
+    if (faces.length > 0) {
+
+      clearInterval(interval);
+
+      document.getElementById("status").innerText = "Wajah terdeteksi";
+
+      // delay sedikit biar posisi stabil
+      setTimeout(() => {
+        ambilFoto(video);
+      }, 800);
+
+    }
+
+  }, 300);
+}
+
+/* =========================
+   KIRIM DATA KE SERVER
+========================= */
+async function kirimData(foto) {
+
+  loading(70);
+  document.getElementById("status").innerText = "Kirim data...";
+
+  let res = await fetch("https://script.google.com/macros/s/AKfycbxQYvZIxsv-KrVS2k3wKtmAtq3iOQuoz2PErPJP764YIvOiKv8lvx8IcFO44-tQc4A/exec", {
+    method: "POST",
+    body: JSON.stringify({
+      uid: window.uid,
+      lat: window.lat,
+      lng: window.lng,
+      foto: foto
+    })
+  });
+
+  let data = await res.json();
+
+  // matikan kamera
+  stream.getTracks().forEach(t => t.stop());
+
+  loading(100);
+
+  if (data.status === "SUCCESS") {
+    showResult(data, foto);
+  }
+
+  if (data.status === "OUT_OF_RANGE") {
+    document.getElementById("status").innerText =
+      "Diluar area (" + Math.round(data.jarak) + "m)";
+  }
+
+  if (data.status === "NOT_REGISTERED") {
+    document.getElementById("status").innerText =
+      "Kartu tidak terdaftar";
+  }
+
+}
+
+/* =========================
    START NFC
 ========================= */
 async function startScan() {
 
   try {
+
     const ndef = new NDEFReader();
     await ndef.scan();
 
@@ -147,7 +245,10 @@ async function startScan() {
 
     ndef.onreading = async (event) => {
 
+      // ambil UID kartu
       let uid = event.serialNumber;
+      window.uid = uid;
+
       document.getElementById("uid").innerText = uid;
 
       loading(30);
@@ -155,11 +256,11 @@ async function startScan() {
 
       navigator.geolocation.getCurrentPosition(async (pos) => {
 
-        let lat = pos.coords.latitude;
-        let lng = pos.coords.longitude;
+        window.lat = pos.coords.latitude;
+        window.lng = pos.coords.longitude;
 
         loading(50);
-        document.getElementById("status").innerText = "Ambil foto...";
+        document.getElementById("status").innerText = "Buka kamera...";
 
         // buka kamera
         stream = await navigator.mediaDevices.getUserMedia({ video: true });
@@ -168,52 +269,8 @@ async function startScan() {
         video.srcObject = stream;
         video.play();
 
-        setTimeout(async () => {
-
-          let canvas = document.createElement("canvas");
-          canvas.width = video.videoWidth;
-          canvas.height = video.videoHeight;
-
-          let ctx = canvas.getContext("2d");
-          ctx.drawImage(video, 0, 0);
-
-          let foto = canvas.toDataURL("image/jpeg");
-
-          loading(70);
-          document.getElementById("status").innerText = "Kirim data...";
-
-          let res = await fetch("https://script.google.com/macros/s/AKfycbxQYvZIxsv-KrVS2k3wKtmAtq3iOQuoz2PErPJP764YIvOiKv8lvx8IcFO44-tQc4A/exec", {
-            method: "POST",
-            body: JSON.stringify({
-              uid: uid,
-              lat: lat,
-              lng: lng,
-              foto: foto
-            })
-          });
-
-          let data = await res.json();
-
-          // matikan kamera
-          stream.getTracks().forEach(t => t.stop());
-
-          loading(100);
-
-          if (data.status === "SUCCESS") {
-            showResult(data, foto);
-          }
-
-          if (data.status === "OUT_OF_RANGE") {
-            document.getElementById("status").innerText =
-              "Diluar area (" + Math.round(data.jarak) + "m)";
-          }
-
-          if (data.status === "NOT_REGISTERED") {
-            document.getElementById("status").innerText =
-              "Kartu tidak terdaftar";
-          }
-
-        }, 1000);
+        // tunggu wajah sebelum foto
+        tungguWajah(video);
 
       });
 
