@@ -57,7 +57,6 @@
       background: green;
     }
 
-    /* ===== RESULT STYLE ===== */
     .row {
       display: flex;
       margin: 6px 0;
@@ -78,7 +77,6 @@
       width: 50%;
       text-align: left;
     }
-
   </style>
 </head>
 
@@ -93,12 +91,14 @@
     <div class="status red">Mencari lokasi...</div>
     <div class="loader"></div>
     <p>Jarak: <span id="jarak">-</span></p>
+    <p>Akurasi: <span id="akurasi">-</span></p>
   </div>
 
   <!-- STATE 2 -->
   <div id="ready" style="display:none;">
     <div class="status green">Dalam Area</div>
     <p>Jarak: <span id="jarak2">-</span></p>
+    <p>Akurasi: <span id="akurasi2">-</span></p>
     <button id="btnAbsen" disabled>ABSEN</button>
   </div>
 
@@ -175,28 +175,39 @@ function hitungJarak(lat1, lon1, lat2, lon2) {
   return R * c;
 }
 
-// ===== GPS =====
+// ===== GPS REALTIME =====
 navigator.geolocation.watchPosition(pos => {
 
   currentLat = pos.coords.latitude;
   currentLng = pos.coords.longitude;
 
+  const accuracy = pos.coords.accuracy;
   const jarak = hitungJarak(currentLat, currentLng, TARGET_LAT, TARGET_LNG);
 
+  // update loading
   document.getElementById("jarak").innerText = Math.round(jarak) + " m";
+  document.getElementById("akurasi").innerText = "± " + Math.round(accuracy) + " m";
 
-  if (jarak <= RADIUS && !sudahDalamArea) {
+  // kalau sudah masuk radius
+  if (jarak <= RADIUS) {
 
-    sudahDalamArea = true;
+    // update juga di READY biar tetap dinamis
+    if(document.getElementById("jarak2")){
+      document.getElementById("jarak2").innerText = Math.round(jarak) + " m";
+      document.getElementById("akurasi2").innerText = "± " + Math.round(accuracy) + " m";
+    }
 
-    document.getElementById("loading").style.display = "none";
-    document.getElementById("ready").style.display = "block";
+    if (!sudahDalamArea) {
 
-    document.getElementById("jarak2").innerText = Math.round(jarak) + " m";
+      sudahDalamArea = true;
 
-    let btn = document.getElementById("btnAbsen");
-    btn.disabled = false;
-    btn.classList.add("active");
+      document.getElementById("loading").style.display = "none";
+      document.getElementById("ready").style.display = "block";
+
+      let btn = document.getElementById("btnAbsen");
+      btn.disabled = false;
+      btn.classList.add("active");
+    }
   }
 
 },{
