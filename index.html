@@ -43,6 +43,7 @@
   <div id="loading">
     <div class="status red">Mencari lokasi...</div>
     <p>Jarak: <span id="jarak">-</span></p>
+    <p>Akurasi: <span id="akurasi">-</span></p>
   </div>
 
   <!-- READY -->
@@ -110,15 +111,25 @@ function hitungJarak(lat1, lon1, lat2, lon2) {
   return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
 }
 
+// ===== ANIMASI TITIK =====
+let dot = 0;
+setInterval(() => {
+  dot = (dot + 1) % 4;
+  document.querySelector("#loading .status").innerText =
+    "Mencari lokasi" + ".".repeat(dot);
+}, 500);
+
 // ===== GPS =====
 navigator.geolocation.watchPosition(pos => {
 
   currentLat = pos.coords.latitude;
   currentLng = pos.coords.longitude;
 
+  const accuracy = pos.coords.accuracy;
   const jarak = hitungJarak(currentLat, currentLng, TARGET_LAT, TARGET_LNG);
 
   document.getElementById("jarak").innerText = Math.round(jarak) + " m";
+  document.getElementById("akurasi").innerText = "± " + Math.round(accuracy) + " m";
 
   if (jarak <= RADIUS) {
     document.getElementById("loading").style.display = "none";
@@ -129,6 +140,12 @@ navigator.geolocation.watchPosition(pos => {
     btn.classList.add("active");
   }
 
+}, err => {
+  alert("GPS ERROR: " + err.message);
+},{
+  enableHighAccuracy: true,
+  maximumAge: 3000,
+  timeout: 15000
 });
 
 // ===== ABSEN =====
@@ -164,10 +181,8 @@ document.getElementById("btnFoto").onclick = function(){
   document.getElementById("preview").src = img;
   document.getElementById("preview").style.display = "block";
 
-  // 🔥 MATIKAN KAMERA
-  if (stream) {
-    stream.getTracks().forEach(track => track.stop());
-  }
+  // matikan kamera
+  if (stream) stream.getTracks().forEach(track => track.stop());
 
   video.style.display = "none";
 
@@ -215,10 +230,12 @@ document.getElementById("btnKirim").onclick = async function(){
 
   if(data.status == "OK"){
     document.getElementById("statusResult").innerText = "ABSEN " + data.aksi;
+    document.getElementById("statusResult").className = "status green";
     document.getElementById("nama").innerText = data.nama;
     document.getElementById("gudang").innerText = data.gudang;
   } else {
     document.getElementById("statusResult").innerText = "DITOLAK";
+    document.getElementById("statusResult").className = "status red";
     document.getElementById("nama").innerText = data.pesan;
   }
 
