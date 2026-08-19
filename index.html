@@ -12,30 +12,22 @@
       background: #f5f5f5;
     }
 
-    button {
-      padding: 15px 25px;
-      font-size: 18px;
-      color: white;
-      border: none;
-      border-radius: 10px;
-      margin-top: 15px;
-    }
-
-    #btnScan {
-      background: green;
-    }
-
-    #btnKirim {
-      background: blue;
-      display: none;
-    }
-
     .box {
       margin-top: 20px;
-      padding: 15px;
+      padding: 20px;
       background: white;
       border-radius: 10px;
-      text-align: left;
+    }
+
+    .success {
+      color: green;
+      font-size: 20px;
+      font-weight: bold;
+    }
+
+    .error {
+      color: red;
+      font-size: 18px;
     }
   </style>
 </head>
@@ -44,106 +36,56 @@
 
 <h2>ABSENSI NFC</h2>
 
-<button id="btnScan" onclick="scanNFC()">SCAN KARTU</button>
-
-<button id="btnKirim" onclick="kirimData()">KONFIRMASI</button>
-
 <div class="box">
-  <p id="status">Status: Menunggu scan...</p>
-  <p id="uid">ID: -</p>
-  <p id="server">Server: -</p>
+  <p id="status">Memproses...</p>
+  <p id="info"></p>
 </div>
 
 <script>
 
-let uidTerscan = "";
-let ndef = null;
+// ambil UID dari URL
+const params = new URLSearchParams(window.location.search);
+const uid = params.get("uid");
 
-// parsing text NFC
-function parseTextRecord(record) {
-  const data = new Uint8Array(record.data);
-  const textDecoder = new TextDecoder();
-  const langLength = data[0] & 0x3F;
-  return textDecoder.decode(data.slice(1 + langLength));
+if(!uid){
+  document.getElementById("status").innerHTML = "<span class='error'>UID tidak ada</span>";
+} else {
+  kirim(uid);
 }
 
-// scan NFC
-async function scanNFC() {
+async function kirim(uid){
 
-  if (!('NDEFReader' in window)) {
-    alert("HP tidak support NFC Web");
-    return;
-  }
+  document.getElementById("status").innerText = "Mengirim ke server...";
 
   try {
-    ndef = new NDEFReader();
-    await ndef.scan();
 
-    document.getElementById("status").innerText = "Tempelkan kartu...";
-
-    ndef.onreading = (event) => {
-
-      let rawText = "";
-
-      for (const record of event.message.records) {
-        if (record.recordType === "text") {
-          rawText = parseTextRecord(record);
-        }
-      }
-
-      uidTerscan = rawText.replace(/[^0-9]/g, "");
-
-      if (!uidTerscan) {
-        document.getElementById("uid").innerText = "UID: GAGAL BACA";
-        document.getElementById("status").innerText = "Scan ulang";
-        return;
-      }
-
-      document.getElementById("uid").innerText = "UID: " + uidTerscan;
-      document.getElementById("status").innerText = "Klik KONFIRMASI";
-
-      // STOP scan biar tidak double
-      ndef.onreading = null;
-
-      document.getElementById("btnKirim").style.display = "block";
-    };
-
-  } catch (error) {
-    alert("Error NFC: " + error);
-  }
-}
-
-// kirim ke server
-async function kirimData() {
-
-  if (!uidTerscan) {
-    alert("Belum ada UID");
-    return;
-  }
-
-  document.getElementById("status").innerText = "Kirim ke server...";
-
-  try {
-    let res = await fetch("https://script.google.com/macros/s/AKfycbyrlWCsEXuAFpv0qdAw7JLclCjjooQ3MT3wg3LKgT0CxWEa9mBGOw_9QF83mrR3toY/exec?uid=" + uidTerscan);
+    let res = await fetch("https://script.google.com/macros/s/AKfycbxwlXN-GC8cavD_8z4k6x-m6-cItZVP2F8P8jkgEuU5N0L3oO3ToZLt0VAaL8xiGhg/exec?uid=" + uid);
 
     let data = await res.json();
 
-    if (data.status === "OK") {
-      document.getElementById("server").innerText =
-        "Nama: " + data.nama + "\nStatus: " + data.aksi;
+    if(data.status === "OK"){
 
-      document.getElementById("status").innerText = "Berhasil";
+      document.getElementById("status").innerHTML =
+        "<span class='success'>ABSEN " + data.aksi + "</span>";
+
+      document.getElementById("info").innerHTML =
+        "Nama: " + data.nama + "<br>" +
+        "UID: " + uid + "<br>" +
+        "Gudang: " + data.gudang;
+
     } else {
-      document.getElementById("status").innerText = "Gagal: " + data.message;
+
+      document.getElementById("status").innerHTML =
+        "<span class='error'>Gagal</span>";
+
+      document.getElementById("info").innerText = data.message;
+
     }
 
-  } catch (err) {
-    document.getElementById("status").innerText = "Gagal koneksi";
+  } catch (err){
+    document.getElementById("status").innerHTML =
+      "<span class='error'>Server Error</span>";
   }
-
-  // reset
-  uidTerscan = "";
-  document.getElementById("btnKirim").style.display = "none";
 }
 
 </script>
