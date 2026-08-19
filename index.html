@@ -222,43 +222,6 @@ const URL="https://script.google.com/macros/s/AKfycbxwlXN-GC8cavD_8z4k6x-m6-cItZ
 const params=new URLSearchParams(location.search);
 const UID=params.get("uid")||"";
 
-
-// =============================
-// 🔒 TAMBAHAN ROLE BYPASS
-// =============================
-(function(){
-
-  if(!UID) return;
-
-  fetch(`${URL}?uid=${UID}&mode=check`)
-  .then(r=>r.json())
-  .then(d=>{
-
-    if(d.status!=="OK") return;
-
-    const role = d.role || "User";
-
-    if(role==="Admin"){
-      document.body.innerHTML = "<h2>DASHBOARD ADMIN</h2>";
-      return;
-    }
-
-    if(role==="Direktur"){
-      document.body.innerHTML = "<h2>DASHBOARD DIREKTUR</h2>";
-      return;
-    }
-
-    if(role==="Teknisi"){
-      document.body.innerHTML = "<h2>DASHBOARD TEKNISI</h2>";
-      return;
-    }
-
-  });
-
-})();
-// =============================
-
-
 // LOADER GENERATE
 const loader=document.getElementById("loader");
 for(let i=0;i<12;i++){
@@ -321,3 +284,109 @@ navigator.geolocation.watchPosition(p=>{
     btnAbsen.disabled=false;
   }
 });
+
+// ABSEN
+btnAbsen.onclick=()=>{
+  loader.style.display="block";
+  btnAbsen.disabled=true;
+
+  fetch(`${URL}?uid=${UID}&lat=${lat}&lng=${lng}`)
+  .then(r=>r.json())
+  .then(data=>{
+
+    loader.style.display="none";
+
+    if(data.status!="OK"){
+      mainPage.style.display="none";
+      warningPage.style.display="block";
+
+      let txt=document.getElementById("warningText");
+
+      if(data.pesan?.includes("3")){
+        txt.innerText="BELUM 3 JAM";
+      }else{
+        txt.innerText="BELUM 10 MENIT";
+      }
+
+      let s=5;
+      let cd=document.getElementById("warningCountdown");
+
+      let t=setInterval(()=>{
+        s--; cd.innerText=s;
+        if(s<=0){
+          clearInterval(t);
+          warningPage.style.display="none";
+          showDashboard();
+        }
+      },1000);
+
+      return;
+    }
+
+    mainPage.style.display="none";
+    infoPage.style.display="block";
+
+    document.getElementById("nama").innerText=data.nama;
+    document.getElementById("lokasi").innerText=data.gudang;
+    document.getElementById("statusAbsensi").innerText=data.aksi;
+
+    let now=new Date();
+    document.getElementById("tanggal").innerText=now.toLocaleDateString();
+    document.getElementById("waktu").innerText=now.toLocaleTimeString();
+
+  });
+};
+
+// JAM DASHBOARD
+function startClock(){
+  function update(){
+    let now = new Date();
+
+    let tgl = now.toLocaleDateString('id-ID',{
+      weekday:'long',
+      day:'2-digit',
+      month:'long',
+      year:'numeric'
+    });
+
+    let jam = now.toLocaleTimeString('id-ID',{
+      hour:'2-digit',
+      minute:'2-digit',
+      second:'2-digit',
+      hour12:false
+    });
+
+    document.getElementById("dashTanggal").innerText = tgl;
+    document.getElementById("dashWaktu").innerText = jam;
+  }
+
+  update();
+  setInterval(update,1000);
+
+  setInterval(()=>{
+    let el=document.getElementById("dashWaktu");
+    el.style.opacity = el.style.opacity == "0.5" ? "1" : "0.5";
+  },1000);
+}
+
+// DASHBOARD
+function showDashboard(){
+  dashboardPage.style.display="block";
+
+  fetch(`${URL}?mode=dashboard&uid=${UID}`)
+  .then(r=>r.json())
+  .then(d=>{
+    if(d.status=="OK"){
+      document.getElementById("dashNama").innerText=d.nama;
+      document.getElementById("dashHari").innerText=d.totalHari;
+      document.getElementById("dashJam").innerText=d.totalJam+" Jam";
+    }
+  });
+
+  startClock();
+}
+
+</script>
+
+</body>
+</html>
