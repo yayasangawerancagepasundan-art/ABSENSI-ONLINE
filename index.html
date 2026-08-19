@@ -175,7 +175,7 @@ function hitungJarak(lat1, lon1, lat2, lon2) {
   return R * c;
 }
 
-// ===== GPS REALTIME =====
+// ===== SATU-SATUNYA GPS (FIX) =====
 navigator.geolocation.watchPosition(pos => {
 
   currentLat = pos.coords.latitude;
@@ -188,28 +188,26 @@ navigator.geolocation.watchPosition(pos => {
   document.getElementById("jarak").innerText = Math.round(jarak) + " m";
   document.getElementById("akurasi").innerText = "± " + Math.round(accuracy) + " m";
 
-  // kalau sudah masuk radius
-  if (jarak <= RADIUS) {
-
-    // update juga di READY biar tetap dinamis
-    if(document.getElementById("jarak2")){
-      document.getElementById("jarak2").innerText = Math.round(jarak) + " m";
-      document.getElementById("akurasi2").innerText = "± " + Math.round(accuracy) + " m";
-    }
-
-    if (!sudahDalamArea) {
-
-      sudahDalamArea = true;
-
-      document.getElementById("loading").style.display = "none";
-      document.getElementById("ready").style.display = "block";
-
-      let btn = document.getElementById("btnAbsen");
-      btn.disabled = false;
-      btn.classList.add("active");
-    }
+  // update ready juga biar tidak beku
+  if(document.getElementById("jarak2")){
+    document.getElementById("jarak2").innerText = Math.round(jarak) + " m";
+    document.getElementById("akurasi2").innerText = "± " + Math.round(accuracy) + " m";
   }
 
+  if (jarak <= RADIUS && !sudahDalamArea) {
+
+    sudahDalamArea = true;
+
+    document.getElementById("loading").style.display = "none";
+    document.getElementById("ready").style.display = "block";
+
+    let btn = document.getElementById("btnAbsen");
+    btn.disabled = false;
+    btn.classList.add("active");
+  }
+
+}, err => {
+  alert("GPS ERROR: " + err.message);
 },{
   enableHighAccuracy: true,
   maximumAge: 0,
