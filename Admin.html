@@ -2,39 +2,67 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ADMIN PANEL</title>
+<title>ADMIN DATABASE</title>
 
 <style>
 body{
-  font-family:Arial;
-  background:#111;
-  color:#fff;
+  background:black;
+  color:white;
+  font-family:monospace;
   text-align:center;
 }
 
-.container{
-  max-width:500px;
-  margin:auto;
+h2,h3{
+  margin-top:20px;
 }
 
-input,select{
-  width:90%;
-  padding:10px;
-  margin:5px;
+input,select,button{
+  width:80%;
+  padding:12px;
+  margin:6px;
+  border-radius:6px;
+  border:none;
 }
 
 button{
-  padding:10px;
-  margin:5px;
-  width:90%;
+  background:#00cc66;
+  color:black;
+  font-weight:bold;
 }
 
-.card{
-  background:#222;
-  padding:10px;
+button:hover{
+  background:#00ff88;
+}
+
+table{
+  width:95%;
+  margin:20px auto;
+  border-collapse:collapse;
+  background:white;
+  color:black;
+}
+
+td,th{
+  border:1px solid #999;
+  padding:8px;
+}
+
+tr:hover{
+  background:#ddd;
+  cursor:pointer;
+}
+
+.box{
   margin:10px;
-  border-radius:8px;
-  text-align:left;
+  padding:10px;
+  background:#111;
+  border-radius:10px;
+}
+
+canvas{
+  background:white;
+  margin-top:10px;
+  border-radius:10px;
 }
 </style>
 </head>
@@ -43,9 +71,8 @@ button{
 
 <h2>ADMIN DATABASE</h2>
 
-<div class="container">
+<div class="box">
 
-<!-- FORM -->
 <input id="uid" placeholder="UID">
 <input id="nama" placeholder="Nama">
 <input id="gudang" placeholder="Gudang">
@@ -57,119 +84,162 @@ button{
   <option>Teknisi</option>
 </select>
 
-<button onclick="addUser()">TAMBAH</button>
-<button onclick="updateUser()">UPDATE</button>
-
-<hr>
-
-<h3>DATA USER</h3>
-<div id="list"></div>
+<button onclick="tambah()">TAMBAH</button>
+<button onclick="update()">UPDATE</button>
+<button onclick="hapus()">HAPUS</button>
 
 </div>
 
+<h3>DATA USER</h3>
+
+<table id="tbl">
+<tr>
+  <th>UID</th>
+  <th>Nama</th>
+  <th>Gudang</th>
+  <th>Role</th>
+</tr>
+</table>
+
+<h3>ANALYTICS</h3>
+
+<div class="box">
+  <div>Total Karyawan: <b><span id="totalOrang">0</span></b></div>
+  <div>Total Jam Kerja: <b><span id="totalJam">0</span></b></div>
+</div>
+
+<canvas id="chart" height="200"></canvas>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 <script>
 
+// ================= CONFIG =================
 const URL="https://script.google.com/macros/s/AKfycbxwlXN-GC8cavD_8z4k6x-m6-cItZVP2F8P8jkgEuU5N0L3oO3ToZLt0VAaL8xiGhg/exec";
 
-// LOAD DATA
-function loadData(){
-  fetch(URL+"?mode=dashboard&uid=dummy") // trik untuk hit API
-  .then(()=>getDatabase());
+// ================= HELPER =================
+function kirim(data){
+  return fetch(URL,{
+    method:"POST",
+    body:JSON.stringify(data)
+  }).then(r=>r.json());
 }
 
-// AMBIL DATABASE (pakai trick)
-function getDatabase(){
-  fetch(URL)
-  .then(()=>{
-
-    // karena GAS tidak expose DB langsung
-    // kita pakai workaround: tampil manual dummy
-
-    document.getElementById("list").innerHTML=
-    "<p>Gunakan fitur tambah/edit/hapus</p>";
-
-  });
-}
-
-// TAMBAH
-function addUser(){
-
-  const data={
+// ================= CRUD =================
+function tambah(){
+  kirim({
     mode:"add",
-    uid:document.getElementById("uid").value,
-    nama:document.getElementById("nama").value,
-    role:document.getElementById("role").value,
-    gudang:document.getElementById("gudang").value
-  };
+    uid:uid.value,
+    nama:nama.value,
+    gudang:gudang.value,
+    role:role.value
+  }).then(()=>{
+    alert("DATA DITAMBAH");
+    load();
+  });
+}
 
-  fetch(URL,{
-    method:"POST",
-    body:JSON.stringify(data)
-  })
+function update(){
+  kirim({
+    mode:"update",
+    uid:uid.value,
+    nama:nama.value,
+    gudang:gudang.value,
+    role:role.value
+  }).then(()=>{
+    alert("DATA DIUPDATE");
+    load();
+  });
+}
+
+function hapus(){
+  if(!confirm("Yakin hapus data?")) return;
+
+  kirim({
+    mode:"delete",
+    uid:uid.value
+  }).then(()=>{
+    alert("DATA DIHAPUS");
+    load();
+  });
+}
+
+// ================= LOAD TABLE =================
+function load(){
+  kirim({mode:"get"}).then(res=>{
+
+    const tbl=document.getElementById("tbl");
+
+    tbl.innerHTML = `
+    <tr>
+      <th>UID</th>
+      <th>Nama</th>
+      <th>Gudang</th>
+      <th>Role</th>
+    </tr>`;
+
+    res.data.forEach(d=>{
+
+      let row=tbl.insertRow();
+
+      row.innerHTML = `
+        <td>${d[0]}</td>
+        <td>${d[1]}</td>
+        <td>${d[3]}</td>
+        <td>${d[4]}</td>
+      `;
+
+      // klik untuk edit
+      row.onclick=()=>{
+        uid.value=d[0];
+        nama.value=d[1];
+        gudang.value=d[3];
+        role.value=d[4];
+      }
+
+    });
+
+  });
+}
+
+// ================= ANALYTICS =================
+function loadAnalytics(){
+
+  fetch(URL+"?mode=analytics")
   .then(r=>r.json())
-  .then(res=>{
-    alert("BERHASIL TAMBAH");
-    clearForm();
+  .then(d=>{
+
+    document.getElementById("totalOrang").innerText = d.totalOrang;
+    document.getElementById("totalJam").innerText = d.totalJam;
+
+    let labels = Object.keys(d.perHari);
+    let values = Object.values(d.perHari);
+
+    // hapus chart lama biar tidak numpuk
+    if(window.chart) window.chart.destroy();
+
+    window.chart = new Chart(document.getElementById("chart"),{
+      type:"line",
+      data:{
+        labels:labels,
+        datasets:[{
+          label:"Absensi Harian",
+          data:values,
+          fill:false
+        }]
+      },
+      options:{
+        responsive:true
+      }
+    });
+
   });
 
 }
 
-// UPDATE
-function updateUser(){
-
-  const data={
-    mode:"edit",
-    uid:document.getElementById("uid").value,
-    nama:document.getElementById("nama").value,
-    role:document.getElementById("role").value,
-    gudang:document.getElementById("gudang").value
-  };
-
-  fetch(URL,{
-    method:"POST",
-    body:JSON.stringify(data)
-  })
-  .then(r=>r.json())
-  .then(res=>{
-    alert("BERHASIL UPDATE");
-    clearForm();
-  });
-
-}
-
-// DELETE
-function deleteUser(uid){
-
-  fetch(URL,{
-    method:"POST",
-    body:JSON.stringify({
-      mode:"delete",
-      uid:uid
-    })
-  })
-  .then(r=>r.json())
-  .then(()=>{
-    alert("TERHAPUS");
-  });
-}
-
-// ISI FORM (edit)
-function fill(uid,nama,role,gudang){
-  document.getElementById("uid").value=uid;
-  document.getElementById("nama").value=nama;
-  document.getElementById("role").value=role;
-  document.getElementById("gudang").value=gudang;
-}
-
-// CLEAR
-function clearForm(){
-  document.getElementById("uid").value="";
-  document.getElementById("nama").value="";
-  document.getElementById("gudang").value="";
-}
-
-// INIT
-loadData();
+// ================= INIT =================
+load();
+loadAnalytics();
 
 </script>
 
