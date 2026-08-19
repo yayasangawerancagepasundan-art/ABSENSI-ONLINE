@@ -26,6 +26,8 @@
       padding: 15px;
       background: white;
       border-radius: 10px;
+      white-space: pre-wrap;
+      text-align: left;
     }
   </style>
 </head>
@@ -37,14 +39,13 @@
 <button onclick="scanNFC()">SCAN KARTU</button>
 
 <div class="box">
-  <p id="hasil">UID: -</p>
+  <p id="hasil">Menunggu scan...</p>
   <p id="server">Server: -</p>
 </div>
 
 <script>
 
 async function scanNFC() {
-
   try {
 
     const ndef = new NDEFReader();
@@ -54,52 +55,59 @@ async function scanNFC() {
 
     ndef.onreading = async (event) => {
 
-      let text = "";
+      let output = "";
+      let uid = "";
 
       for (const record of event.message.records) {
 
-        // 🔥 ambil TEXT dari kartu
+        output += "Record Type: " + record.recordType + "\n";
+
+        const raw = new Uint8Array(record.data);
+        output += "RAW: " + Array.from(raw).map(b => b.toString(16)).join(" ") + "\n";
+
+        // decode TEXT
         if (record.recordType === "text") {
+          const langLength = raw[0];
+          uid = new TextDecoder("utf-8").decode(raw.slice(1 + langLength));
+          output += "UID: " + uid + "\n";
+        }
 
-          const data = new Uint8Array(record.data);
-          const langLength = data[0]; // skip bahasa (contoh: en)
+        output += "----------------------\n";
+      }
 
-          const textDecoder = new TextDecoder("utf-8");
-          text = textDecoder.decode(data.slice(1 + langLength));
+      document.getElementById("hasil").innerText = output;
+
+      // 🔥 AUTO KIRIM KE SERVER
+      if (uid !== "") {
+        try {
+
+          let res = await fetch("https://script.google.com/macros/s/AKfycbyrlWCsEXuAFpv0qdAw7JLclCjjooQ3MT3wg3LKgT0CxWEa9mBGOw_9QF83mrR3toY/exec", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              uid: uid
+            })
+          });
+
+          let data = await res.json();
+
+          document.getElementById("server").innerText =
+            "Server: " + JSON.stringify(data);
+
+        } catch (err) {
+          document.getElementById("server").innerText = "Server ERROR";
+          console.log(err);
         }
       }
-
-      // kalau kosong
-      if (text === "") {
-        document.getElementById("hasil").innerText = "Kartu kosong / salah format";
-        return;
-      }
-
-      document.getElementById("hasil").innerText = "UID: " + text;
-
-      // 🔥 KIRIM KE APPS SCRIPT
-      let res = await fetch("https://script.google.com/macros/s/AKfycbyrlWCsEXuAFpv0qdAw7JLclCjjooQ3MT3wg3LKgT0CxWEa9mBGOw_9QF83mrR3toY/exec", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          uid: text
-        })
-      });
-
-      let data = await res.json();
-
-      document.getElementById("server").innerText =
-        "Server: " + JSON.stringify(data);
 
     };
 
   } catch (err) {
-    alert("HP tidak support NFC / belum aktif");
+    alert("NFC tidak support / belum aktif");
     console.log(err);
   }
-
 }
 
 </script>
