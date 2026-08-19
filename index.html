@@ -5,9 +5,25 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
   <style>
-    body { font-family: Arial; text-align: center; background: #f5f5f5; padding: 20px; }
-    .card { background: white; padding: 20px; border-radius: 15px; }
-    .status { font-size: 20px; font-weight: bold; margin-bottom: 10px; }
+    body {
+      font-family: Arial;
+      text-align: center;
+      background: #f5f5f5;
+      padding: 20px;
+    }
+
+    .card {
+      background: white;
+      padding: 20px;
+      border-radius: 15px;
+    }
+
+    .status {
+      font-size: 20px;
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+
     .red { color:red; }
     .green { color:green; }
 
@@ -24,12 +40,36 @@
 
     button.active { background: green; }
 
-    video, img { width: 100%; border-radius: 10px; margin-top: 10px; }
+    video, img {
+      width: 100%;
+      border-radius: 10px;
+      margin-top: 10px;
+    }
 
-    .row { display: flex; margin: 6px 0; }
+    .row {
+      display: flex;
+      margin: 6px 0;
+    }
+
     .label { width: 40%; text-align: left; font-weight: bold; }
     .titik { width: 10%; text-align: center; }
     .value { width: 50%; text-align: left; }
+
+    /* SPINNER */
+    .loader {
+      border: 6px solid #eee;
+      border-top: 6px solid #3498db;
+      border-radius: 50%;
+      width: 60px;
+      height: 60px;
+      animation: spin 1s linear infinite;
+      margin: 15px auto;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
   </style>
 </head>
 
@@ -42,6 +82,7 @@
   <!-- LOADING -->
   <div id="loading">
     <div class="status red">Mencari lokasi...</div>
+    <div class="loader"></div>
     <p>Jarak: <span id="jarak">-</span></p>
     <p>Akurasi: <span id="akurasi">-</span></p>
   </div>
@@ -49,6 +90,8 @@
   <!-- READY -->
   <div id="ready" style="display:none;">
     <div class="status green">Dalam Area</div>
+    <p>Jarak: <span id="jarak2">-</span></p>
+    <p>Akurasi: <span id="akurasi2">-</span></p>
     <button id="btnAbsen" disabled>ABSEN</button>
   </div>
 
@@ -111,7 +154,7 @@ function hitungJarak(lat1, lon1, lat2, lon2) {
   return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
 }
 
-// ===== ANIMASI TITIK =====
+// ===== ANIMASI TEXT =====
 let dot = 0;
 setInterval(() => {
   dot = (dot + 1) % 4;
@@ -128,8 +171,15 @@ navigator.geolocation.watchPosition(pos => {
   const accuracy = pos.coords.accuracy;
   const jarak = hitungJarak(currentLat, currentLng, TARGET_LAT, TARGET_LNG);
 
+  // update loading
   document.getElementById("jarak").innerText = Math.round(jarak) + " m";
   document.getElementById("akurasi").innerText = "± " + Math.round(accuracy) + " m";
+
+  // update ready
+  if(document.getElementById("jarak2")){
+    document.getElementById("jarak2").innerText = Math.round(jarak) + " m";
+    document.getElementById("akurasi2").innerText = "± " + Math.round(accuracy) + " m";
+  }
 
   if (jarak <= RADIUS) {
     document.getElementById("loading").style.display = "none";
@@ -181,7 +231,6 @@ document.getElementById("btnFoto").onclick = function(){
   document.getElementById("preview").src = img;
   document.getElementById("preview").style.display = "block";
 
-  // matikan kamera
   if (stream) stream.getTracks().forEach(track => track.stop());
 
   video.style.display = "none";
