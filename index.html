@@ -41,7 +41,7 @@
       background: green;
     }
 
-    /* ===== RADAR + MAP ===== */
+    /* ===== RADAR MAP ===== */
     .radar {
       position: relative;
       width: 200px;
@@ -52,12 +52,10 @@
       background: black;
     }
 
-    .radar iframe {
-      position: absolute;
+    iframe {
       width: 100%;
       height: 100%;
       border: none;
-      filter: grayscale(0.3) brightness(0.9);
     }
 
     .overlay {
@@ -66,16 +64,14 @@
       height: 100%;
     }
 
-    /* sweep stabil */
     .sweep {
       position: absolute;
       width: 100%;
       height: 100%;
       border-radius: 50%;
       background: conic-gradient(
-        rgba(0,255,100,0.5) 0deg,
-        rgba(0,255,100,0.2) 40deg,
-        transparent 80deg
+        rgba(0,255,100,0.4),
+        transparent
       );
       animation: rotate 2s linear infinite;
     }
@@ -84,25 +80,6 @@
       100% { transform: rotate(360deg); }
     }
 
-    /* sonar */
-    .sonar {
-      position: absolute;
-      width: 20px;
-      height: 20px;
-      background: rgba(0,255,100,0.3);
-      border-radius: 50%;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      animation: sonarWave 2s infinite;
-    }
-
-    @keyframes sonarWave {
-      0% { transform: translate(-50%, -50%) scale(0.3); opacity: 1; }
-      100% { transform: translate(-50%, -50%) scale(3); opacity: 0; }
-    }
-
-    /* titik hp */
     .center-dot {
       position: absolute;
       width: 10px;
@@ -114,25 +91,22 @@
       transform: translate(-50%, -50%);
     }
 
-    /* target */
     .target-dot {
       position: absolute;
       width: 10px;
       height: 10px;
       background: red;
       border-radius: 50%;
-      transition: 0.3s;
     }
 
-    /* lock hanya di titik */
     .target-lock {
-      animation: lockZoom 0.6s infinite alternate;
-      background: lime !important;
+      animation: pulse 0.6s infinite alternate;
+      background: lime;
     }
 
-    @keyframes lockZoom {
-      0% { transform: scale(1); }
-      100% { transform: scale(1.8); }
+    @keyframes pulse {
+      from { transform: scale(1); }
+      to { transform: scale(1.6); }
     }
 
   </style>
@@ -151,7 +125,6 @@
 
     <div class="overlay">
       <div class="sweep"></div>
-      <div class="sonar"></div>
       <div class="center-dot"></div>
       <div class="target-dot" id="targetDot"></div>
     </div>
@@ -171,6 +144,12 @@ const TARGET_LNG = 106.4997284;
 const RADIUS = 50;
 
 let locked = false;
+let lastZoom = 17;
+let lastUpdate = 0;
+
+// ===== LOAD MAP SEKALI =====
+document.getElementById("mapFrame").src =
+  `https://maps.google.com/maps?q=${TARGET_LAT},${TARGET_LNG}&z=17&output=embed`;
 
 // ===== HITUNG JARAK =====
 function hitungJarak(lat1, lon1, lat2, lon2) {
@@ -198,20 +177,27 @@ navigator.geolocation.watchPosition(pos => {
   document.getElementById("jarak").innerText = Math.round(jarak) + " m";
   document.getElementById("akurasi").innerText = "± " + Math.round(accuracy) + " m";
 
-  // ===== ZOOM STEP (HALUS BERDASARKAN JARAK) =====
+  // ===== ZOOM STEP HALUS (TIDAK KEDIP) =====
   let zoom;
 
   if (jarak > 500) zoom = 15;
-  else if (jarak > 300) zoom = 16;
-  else if (jarak > 200) zoom = 17;
-  else if (jarak > 100) zoom = 18;
-  else if (jarak > 50) zoom = 19;
-  else zoom = 20;
+  else if (jarak > 200) zoom = 16;
+  else if (jarak > 100) zoom = 17;
+  else if (jarak > 50) zoom = 18;
+  else zoom = 19;
 
-  document.getElementById("mapFrame").src =
-    `https://maps.google.com/maps?q=${lat},${lng}&z=${zoom}&output=embed`;
+  // UPDATE MAP TIDAK TERLALU SERING
+  let now = Date.now();
+  if (Math.abs(zoom - lastZoom) >= 1 && (now - lastUpdate > 2000)) {
 
-  // ===== POSISI TARGET =====
+    document.getElementById("mapFrame").src =
+      `https://maps.google.com/maps?q=${lat},${lng}&z=${zoom}&output=embed`;
+
+    lastZoom = zoom;
+    lastUpdate = now;
+  }
+
+  // ===== TARGET POSISI =====
   let dx = TARGET_LNG - lng;
   let dy = TARGET_LAT - lat;
 
@@ -243,8 +229,6 @@ navigator.geolocation.watchPosition(pos => {
     document.getElementById("btnAbsen").classList.add("active");
   }
 
-}, err => {
-  alert("GPS ERROR: " + err.message);
 },{
   enableHighAccuracy: true,
   maximumAge: 3000,
