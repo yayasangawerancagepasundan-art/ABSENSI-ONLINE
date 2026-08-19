@@ -2,19 +2,44 @@
 <html>
 <head>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Scan NFC</title>
+  <title>Absensi NFC</title>
+
+  <style>
+    body {
+      font-family: Arial;
+      text-align: center;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+
+    button {
+      padding: 15px 25px;
+      font-size: 18px;
+      background: green;
+      color: white;
+      border: none;
+      border-radius: 10px;
+    }
+
+    .box {
+      margin-top: 20px;
+      padding: 15px;
+      background: white;
+      border-radius: 10px;
+    }
+  </style>
 </head>
 
-<body style="text-align:center; font-family:Arial; padding:20px;">
+<body>
 
 <h2>ABSENSI NFC</h2>
 
-<button onclick="scanNFC()" style="padding:15px; font-size:18px;">
-SCAN KARTU
-</button>
+<button onclick="scanNFC()">SCAN KARTU</button>
 
-<p id="hasil">UID: -</p>
-<p id="server">Server: -</p>
+<div class="box">
+  <p id="hasil">UID: -</p>
+  <p id="server">Server: -</p>
+</div>
 
 <script>
 
@@ -29,17 +54,30 @@ async function scanNFC() {
 
     ndef.onreading = async (event) => {
 
-      const decoder = new TextDecoder();
-
       let text = "";
 
       for (const record of event.message.records) {
-        text = decoder.decode(record.data);
+
+        // 🔥 ambil TEXT dari kartu
+        if (record.recordType === "text") {
+
+          const data = new Uint8Array(record.data);
+          const langLength = data[0]; // skip bahasa (contoh: en)
+
+          const textDecoder = new TextDecoder("utf-8");
+          text = textDecoder.decode(data.slice(1 + langLength));
+        }
+      }
+
+      // kalau kosong
+      if (text === "") {
+        document.getElementById("hasil").innerText = "Kartu kosong / salah format";
+        return;
       }
 
       document.getElementById("hasil").innerText = "UID: " + text;
 
-      // 🔥 KIRIM KE SERVER
+      // 🔥 KIRIM KE APPS SCRIPT
       let res = await fetch("https://script.google.com/macros/s/AKfycbyrlWCsEXuAFpv0qdAw7JLclCjjooQ3MT3wg3LKgT0CxWEa9mBGOw_9QF83mrR3toY/exec", {
         method: "POST",
         headers: {
@@ -52,7 +90,8 @@ async function scanNFC() {
 
       let data = await res.json();
 
-      document.getElementById("server").innerText = "Server: " + JSON.stringify(data);
+      document.getElementById("server").innerText =
+        "Server: " + JSON.stringify(data);
 
     };
 
