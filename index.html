@@ -12,7 +12,6 @@ body{
   text-align:center;
 }
 
-/* MAIN */
 .location-icon{
   font-size:80px;
   margin:20px;
@@ -38,7 +37,6 @@ button{
   margin-top:10px;
 }
 
-/* PAGE */
 #infoPage,#thankPage,#warningPage,#dashboardPage{
   display:none;
   margin:10px;
@@ -56,7 +54,6 @@ button{
   color:red;
 }
 
-/* DASHBOARD */
 .rowBox{
   display:flex;
   justify-content:space-between;
@@ -67,15 +64,9 @@ button{
   border:1px solid #ccc;
 }
 
-.label{
-  font-weight:bold;
-}
+.label{ font-weight:bold; }
+.value{ font-size:18px; }
 
-.value{
-  font-size:18px;
-}
-
-/* CAMERA */
 video,img{
   width:100%;
   max-width:300px;
@@ -128,13 +119,13 @@ video,img{
 <div id="warningPage">
 <h1>⚠️</h1>
 <h2 id="warningText"></h2>
-<p>Menutup dalam <span id="warningCountdown">5</span> detik</p>
+<p><span id="warningCountdown">5</span> detik</p>
 </div>
 
 <!-- THANK -->
 <div id="thankPage">
 <h2>TERIMAKASIH</h2>
-<p>Menutup dalam <span id="countdown">10</span> detik</p>
+<p><span id="countdown">10</span> detik</p>
 </div>
 
 <!-- DASHBOARD -->
@@ -146,6 +137,17 @@ video,img{
   </div>
 
   <hr>
+
+  <!-- REALTIME CLOCK -->
+  <div class="rowBox">
+    <div class="label">📅 Tanggal</div>
+    <div id="dashTanggal" class="value">-</div>
+  </div>
+
+  <div class="rowBox">
+    <div class="label">⏰ Waktu</div>
+    <div id="dashJamRealtime" class="value">-</div>
+  </div>
 
   <div class="rowBox">
     <div class="label">👤 Nama</div>
@@ -166,29 +168,42 @@ video,img{
 
 <script>
 
-// ===== CONFIG =====
+// CONFIG
 const URL = "https://script.google.com/macros/s/AKfycbxwlXN-GC8cavD_8z4k6x-m6-cItZVP2F8P8jkgEuU5N0L3oO3ToZLt0VAaL8xiGhg/exec";
-const params = new URLSearchParams(location.search);
-const UID = params.get("uid") || "";
+const UID = new URLSearchParams(location.search).get("uid") || "";
 
 // TARGET
-const TARGET_LAT = -6.2341459;
-const TARGET_LNG = 106.4997284;
-const RADIUS = 50;
+const TARGET_LAT=-6.2341459;
+const TARGET_LNG=106.4997284;
+const RADIUS=50;
 
 // ELEMENT
-const btnAbsen = document.getElementById("btnAbsen");
-const progressBar = document.getElementById("progressBar");
+const btnAbsen=document.getElementById("btnAbsen");
+const progressBar=document.getElementById("progressBar");
+const jarak=document.getElementById("jarak");
+const akurasi=document.getElementById("akurasi");
+const status=document.getElementById("status");
 
-const jarak = document.getElementById("jarak");
-const akurasi = document.getElementById("akurasi");
-const status = document.getElementById("status");
+const mainPage=document.getElementById("mainPage");
+const infoPage=document.getElementById("infoPage");
+const warningPage=document.getElementById("warningPage");
+const thankPage=document.getElementById("thankPage");
+const dashboardPage=document.getElementById("dashboardPage");
 
-const mainPage = document.getElementById("mainPage");
-const infoPage = document.getElementById("infoPage");
-const warningPage = document.getElementById("warningPage");
-const thankPage = document.getElementById("thankPage");
-const dashboardPage = document.getElementById("dashboardPage");
+const video=document.getElementById("video");
+
+// ===== CAMERA CONTROL =====
+function startCamera(){
+  navigator.mediaDevices.getUserMedia({video:true})
+  .then(s=>video.srcObject=s);
+}
+
+function stopCamera(){
+  if(video.srcObject){
+    video.srcObject.getTracks().forEach(t=>t.stop());
+    video.srcObject=null;
+  }
+}
 
 // ===== DISTANCE =====
 function dist(a,b,c,d){
@@ -201,7 +216,7 @@ function dist(a,b,c,d){
   return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));
 }
 
-// ===== GPS =====
+// GPS
 let lat=0,lng=0,locked=false;
 
 navigator.geolocation.watchPosition(p=>{
@@ -224,31 +239,24 @@ navigator.geolocation.watchPosition(p=>{
   }
 });
 
-// ===== ABSEN =====
+// ABSEN
 btnAbsen.onclick=()=>{
-  if(!locked) return alert("Belum dalam radius");
-
   fetch(`${URL}?uid=${UID}&lat=${lat}&lng=${lng}`)
   .then(r=>r.json())
   .then(data=>{
 
     if(data.status!="OK"){
+      stopCamera();
+
       mainPage.style.display="none";
       warningPage.style.display="block";
 
-      let txt=document.getElementById("warningText");
-
-      if(data.pesan?.includes("3")){
-        txt.innerText="BELUM 3 JAM";
-      }else{
-        txt.innerText="BELUM 10 MENIT";
-      }
+      document.getElementById("warningText").innerText=data.pesan;
 
       let s=5;
-      let cd=document.getElementById("warningCountdown");
-
       let t=setInterval(()=>{
-        s--; cd.innerText=s;
+        s--;
+        document.getElementById("warningCountdown").innerText=s;
         if(s<=0){
           clearInterval(t);
           warningPage.style.display="none";
@@ -262,6 +270,8 @@ btnAbsen.onclick=()=>{
     mainPage.style.display="none";
     infoPage.style.display="block";
 
+    startCamera(); // 🔥 kamera hanya di sini
+
     document.getElementById("nama").innerText=data.nama;
     document.getElementById("lokasi").innerText=data.gudang;
     document.getElementById("statusAbsensi").innerText=data.aksi;
@@ -269,13 +279,8 @@ btnAbsen.onclick=()=>{
     let now=new Date();
     document.getElementById("tanggal").innerText=now.toLocaleDateString();
     document.getElementById("waktu").innerText=now.toLocaleTimeString();
-
   });
 };
-
-// ===== CAMERA =====
-navigator.mediaDevices.getUserMedia({video:true})
-.then(s=>video.srcObject=s);
 
 // FOTO
 takePhoto.onclick=()=>{
@@ -284,6 +289,9 @@ takePhoto.onclick=()=>{
   canvas.getContext("2d").drawImage(video,0,0);
 
   preview.src=canvas.toDataURL("image/jpeg");
+
+  stopCamera(); // 🔥 matikan
+
   preview.style.display="block";
   video.style.display="none";
 
@@ -291,23 +299,24 @@ takePhoto.onclick=()=>{
   retake.style.display="inline-block";
 };
 
-// ULANG
+// RETAKE
 retake.onclick=()=>{
   preview.style.display="none";
-  video.style.display="block";
+  startCamera();
   confirm.disabled=true;
 };
 
-// ===== KONFIRMASI =====
+// KONFIRMASI
 confirm.onclick=()=>{
+  stopCamera();
+
   infoPage.style.display="none";
   thankPage.style.display="block";
 
   let s=10;
-  let cd=document.getElementById("countdown");
-
   let t=setInterval(()=>{
-    s--; cd.innerText=s;
+    s--;
+    document.getElementById("countdown").innerText=s;
     if(s<=0){
       clearInterval(t);
       thankPage.style.display="none";
@@ -316,19 +325,38 @@ confirm.onclick=()=>{
   },1000);
 };
 
-// ===== DASHBOARD =====
+// DASHBOARD
 function showDashboard(){
+
+  stopCamera();
+
   dashboardPage.style.display="block";
 
   fetch(`${URL}?mode=dashboard&uid=${UID}`)
   .then(r=>r.json())
   .then(d=>{
     if(d.status=="OK"){
-      document.getElementById("dashNama").innerText=d.nama;
-      document.getElementById("dashHari").innerText=d.totalHari;
-      document.getElementById("dashJam").innerText=d.totalJam+" Jam";
+      dashNama.innerText=d.nama;
+      dashHari.innerText=d.totalHari;
+      dashJam.innerText=d.totalJam+" Jam";
     }
   });
+
+  startClock(); // 🔥 realtime clock
+}
+
+// REALTIME CLOCK
+function startClock(){
+  setInterval(()=>{
+    let now=new Date();
+
+    let tgl=now.toLocaleDateString();
+    let jam=now.toLocaleTimeString();
+
+    document.getElementById("dashTanggal").innerText=tgl;
+    document.getElementById("dashJamRealtime").innerText=jam;
+
+  },1000);
 }
 
 </script>
