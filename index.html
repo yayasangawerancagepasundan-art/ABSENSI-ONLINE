@@ -1,61 +1,136 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>ABSENSI NFC</title>
+  <title>ABSENSI KARYAWAN</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
   <style>
     body {
       font-family: Arial;
+      background: #f0f2f5;
+      padding: 15px;
       text-align: center;
-      padding: 20px;
-      background: #f5f5f5;
     }
 
-    .box {
-      margin-top: 20px;
-      padding: 20px;
+    .card {
       background: white;
-      border-radius: 10px;
+      border-radius: 15px;
+      padding: 20px;
+      max-width: 400px;
+      margin: auto;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.1);
     }
 
-    .success {
-      color: green;
-      font-size: 20px;
+    h2 {
+      margin-bottom: 10px;
+    }
+
+    .status {
+      font-size: 22px;
+      font-weight: bold;
+      margin: 10px 0;
+    }
+
+    .success { color: green; }
+    .keluar { color: orange; }
+    .error { color: red; }
+
+    .row {
+      display: flex;
+      justify-content: space-between;
+      margin: 6px 0;
+      font-size: 16px;
+    }
+
+    .label {
+      text-align: left;
+      width: 40%;
       font-weight: bold;
     }
 
-    .error {
-      color: red;
-      font-size: 18px;
+    .value {
+      text-align: left;
+      width: 60%;
     }
+
+    .camera {
+      margin-top: 15px;
+    }
+
+    video, canvas {
+      width: 100%;
+      border-radius: 10px;
+      margin-top: 10px;
+    }
+
+    button {
+      margin-top: 10px;
+      padding: 10px;
+      width: 100%;
+      border: none;
+      border-radius: 10px;
+      background: #007bff;
+      color: white;
+      font-size: 16px;
+    }
+
   </style>
 </head>
 
 <body>
 
-<h2>ABSENSI NFC</h2>
+<div class="card">
 
-<div class="box">
-  <p id="status">Memproses...</p>
-  <p id="info"></p>
+  <h2>ABSENSI</h2>
+
+  <div id="status" class="status">Memproses...</div>
+
+  <div class="row">
+    <div class="label">Nama</div>
+    <div class="value" id="nama">-</div>
+  </div>
+
+  <div class="row">
+    <div class="label">Tanggal</div>
+    <div class="value" id="tanggal">-</div>
+  </div>
+
+  <div class="row">
+    <div class="label">Jam</div>
+    <div class="value" id="jam">-</div>
+  </div>
+
+  <div class="row">
+    <div class="label">Gudang</div>
+    <div class="value" id="gudang">-</div>
+  </div>
+
+  <!-- CAMERA -->
+  <div class="camera">
+    <video id="video" autoplay></video>
+    <button onclick="ambilFoto()">Ambil Foto</button>
+    <canvas id="canvas" style="display:none;"></canvas>
+  </div>
+
 </div>
 
 <script>
 
-// ambil UID dari URL
 const params = new URLSearchParams(window.location.search);
 const uid = params.get("uid");
 
+const statusEl = document.getElementById("status");
+
 if(!uid){
-  document.getElementById("status").innerHTML = "<span class='error'>UID tidak ada</span>";
-} else {
+  statusEl.innerHTML = "<span class='error'>UID tidak ditemukan</span>";
+}else{
   kirim(uid);
 }
 
+// =======================
+// KIRIM KE SERVER
+// =======================
 async function kirim(uid){
-
-  document.getElementById("status").innerText = "Mengirim ke server...";
 
   try {
 
@@ -65,28 +140,64 @@ async function kirim(uid){
 
     if(data.status === "OK"){
 
-      document.getElementById("status").innerHTML =
-        "<span class='success'>ABSEN " + data.aksi + "</span>";
+      let warna = (data.aksi === "MASUK") ? "success" : "keluar";
 
-      document.getElementById("info").innerHTML =
-        "Nama: " + data.nama + "<br>" +
-        "UID: " + uid + "<br>" +
-        "Gudang: " + data.gudang;
+      statusEl.innerHTML = "<span class='"+warna+"'>ABSEN " + data.aksi + "</span>";
+
+      document.getElementById("nama").innerText = data.nama;
+      document.getElementById("gudang").innerText = data.gudang;
+
+      let now = new Date();
+
+      document.getElementById("tanggal").innerText =
+        now.toLocaleDateString("id-ID");
+
+      document.getElementById("jam").innerText =
+        now.toLocaleTimeString("id-ID");
 
     } else {
-
-      document.getElementById("status").innerHTML =
-        "<span class='error'>Gagal</span>";
-
-      document.getElementById("info").innerText = data.message;
-
+      statusEl.innerHTML = "<span class='error'>Tidak terdaftar</span>";
     }
 
   } catch (err){
-    document.getElementById("status").innerHTML =
-      "<span class='error'>Server Error</span>";
+    statusEl.innerHTML = "<span class='error'>Server error</span>";
   }
+
 }
+
+// =======================
+// CAMERA
+// =======================
+const video = document.getElementById("video");
+
+navigator.mediaDevices.getUserMedia({ video: true })
+.then(stream => {
+  video.srcObject = stream;
+});
+
+// ambil foto
+function ambilFoto(){
+  const canvas = document.getElementById("canvas");
+  const ctx = canvas.getContext("2d");
+
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+
+  ctx.drawImage(video, 0, 0);
+
+  let image = canvas.toDataURL("image/png");
+
+  console.log("FOTO:", image);
+
+  alert("Foto berhasil diambil (nanti bisa kirim ke server)");
+}
+
+// =======================
+// AUTO RESET 10 DETIK
+// =======================
+setTimeout(() => {
+  window.location.href = "https://yayasangawerancagepasundan-art.github.io/ABSENSI-ONLINE/";
+}, 10000);
 
 </script>
 
