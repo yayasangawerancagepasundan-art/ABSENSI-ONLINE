@@ -2,60 +2,87 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TAMBAH USER</title>
 
 <style>
-body{background:#000;color:#fff;font-family:monospace;margin:0;padding:10px;}
-.container{max-width:500px;margin:auto;}
+body{
+  font-family:monospace;
+  background:black;
+  color:#00ff66;
+  text-align:center;
+}
 
-input{width:100%;padding:12px;margin:5px 0;border-radius:8px;border:none;}
+.container{
+  max-width:400px;
+  margin:auto;
+}
 
-.btn{display:flex;gap:5px;}
-button{flex:1;padding:12px;border:none;border-radius:8px;font-weight:bold;}
+.card{
+  background:white;
+  color:black;
+  padding:15px;
+  margin:10px;
+  border-radius:10px;
+}
 
-.add{background:#0f0;}
-.update{background:#ff0;}
-.delete{background:#f00;color:#fff;}
+input{
+  width:100%;
+  padding:10px;
+  margin-top:5px;
+  border-radius:8px;
+  border:1px solid #ccc;
+}
 
-table{width:100%;table-layout:fixed;border-collapse:collapse;}
-th,td{padding:8px;font-size:12px;word-break:break-word;}
-th{background:#111;}
-tr:nth-child(even){background:#1a1a1a;}
+button{
+  width:90%;
+  padding:12px;
+  margin:10px;
+  border:none;
+  border-radius:10px;
+  font-weight:bold;
+}
+
+.green{ background:lime; }
+.red{ background:red; color:white; }
+.blue{ background:#00ccff; }
 </style>
 </head>
 
 <body>
 
+<h2>➕ TAMBAH USER</h2>
+
 <div class="container">
 
-<h3>ADMIN</h3>
+  <div class="card">
+    UID
+    <input id="uid">
+  </div>
 
-<input id="uid" placeholder="UID">
-<input id="nama" placeholder="Nama">
-<input id="gudang" placeholder="Gudang">
+  <div class="card">
+    NAMA
+    <input id="nama">
+  </div>
 
-<div class="btn">
-<button class="add" onclick="tambah()">Tambah</button>
-<button class="update" onclick="update()">Update</button>
-<button class="delete" onclick="hapus()">Hapus</button>
-</div>
+  <div class="card">
+    GUDANG
+    <input id="gudang">
+  </div>
 
-<input id="search" placeholder="Cari nama..." onkeyup="cari()">
+  <div class="card">
+    LATITUDE
+    <input id="lat" readonly>
+  </div>
 
-<div id="abjad"></div>
+  <div class="card">
+    LONGITUDE
+    <input id="lng" readonly>
+  </div>
 
-<table>
-<thead>
-<tr>
-<th>UID</th>
-<th>Nama</th>
-<th>Gudang</th>
-<th>Status</th>
-</tr>
-</thead>
-<tbody id="list"></tbody>
-</table>
+  <button class="blue" onclick="ambilGPS()">📍 AMBIL LOKASI</button>
 
-<div>Hadir hari ini: <b id="total">0</b></div>
+  <button class="green" onclick="simpan()">SIMPAN</button>
+  <button class="red" onclick="batal()">BATAL</button>
 
 </div>
 
@@ -63,98 +90,44 @@ tr:nth-child(even){background:#1a1a1a;}
 
 const URL="https://script.google.com/macros/s/AKfycbxwlXN-GC8cavD_8z4k6x-m6-cItZVP2F8P8jkgEuU5N0L3oO3ToZLt0VAaL8xiGhg/exec";
 
-let allData=[];
-
-function load(){
- fetch(URL+"?mode=getUsers")
- .then(r=>r.json())
- .then(d=>{
-  allData=d.data;
-  render(allData);
-  buatAbjad();
- });
+function ambilGPS(){
+  navigator.geolocation.getCurrentPosition(p=>{
+    document.getElementById("lat").value = p.coords.latitude;
+    document.getElementById("lng").value = p.coords.longitude;
+  },()=>{
+    alert("Gagal ambil GPS");
+  });
 }
 
-function render(data){
- let html="";
- let hadir=0;
+function simpan(){
 
- data.forEach(d=>{
-  html+=`
-  <tr onclick="pilih('${d.uid}','${d.nama}','${d.gudang}')">
-  <td>${d.uid}</td>
-  <td>${d.nama}</td>
-  <td>${d.gudang}</td>
-  <td id="s_${d.uid}">...</td>
-  </tr>`;
-  cek(d.uid);
- });
+  const uid = document.getElementById("uid").value;
+  const nama = document.getElementById("nama").value;
+  const gudang = document.getElementById("gudang").value;
+  const lat = document.getElementById("lat").value;
+  const lng = document.getElementById("lng").value;
 
- list.innerHTML=html;
-}
-
-function cek(uid){
- fetch(URL+`?mode=cek&uid=${uid}`)
- .then(r=>r.json())
- .then(d=>{
-  let el=document.getElementById("s_"+uid);
-  if(d.status=="HADIR"){
-    el.innerText="✔";
-    hitung();
-  }else{
-    el.innerText="-";
+  if(!uid || !nama || !gudang || !lat || !lng){
+    alert("Semua wajib diisi + GPS wajib");
+    return;
   }
- });
+
+  fetch(`${URL}?mode=addUser&uid=${uid}&nama=${nama}&gudang=${gudang}&lat=${lat}&lng=${lng}`)
+  .then(r=>r.json())
+  .then(d=>{
+    if(d.status=="OK"){
+      alert("User berhasil ditambahkan");
+      location.href="admin.html";
+    }else{
+      alert(d.pesan);
+    }
+  });
+
 }
 
-function hitung(){
- let total=document.querySelectorAll("td:contains('✔')");
- document.getElementById("total").innerText=total.length;
+function batal(){
+  location.href="admin.html";
 }
-
-function pilih(u,n,g){
- uid.value=u;
- nama.value=n;
- gudang.value=g;
-}
-
-function tambah(){
- fetch(URL+`?mode=add&uid=${uid.value}&nama=${nama.value}&gudang=${gudang.value}`)
- .then(()=>load());
-}
-
-function update(){
- fetch(URL+`?mode=update&uid=${uid.value}&nama=${nama.value}&gudang=${gudang.value}`)
- .then(()=>load());
-}
-
-function hapus(){
- fetch(URL+`?mode=delete&uid=${uid.value}`)
- .then(()=>load());
-}
-
-function cari(){
- let q=search.value.toLowerCase();
- let hasil=allData.filter(d=>d.nama.toLowerCase().includes(q));
- render(hasil);
-}
-
-function buatAbjad(){
- let html="";
- for(let i=65;i<=90;i++){
-  let h=String.fromCharCode(i);
-  html+=`<span onclick="filter('${h}')">${h}</span> `;
- }
- html+=`<span onclick="render(allData)">ALL</span>`;
- abjad.innerHTML=html;
-}
-
-function filter(h){
- let hasil=allData.filter(d=>d.nama.toUpperCase().startsWith(h));
- render(hasil);
-}
-
-load();
 
 </script>
 
