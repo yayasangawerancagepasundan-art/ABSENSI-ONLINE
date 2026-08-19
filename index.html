@@ -1,110 +1,136 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>ABSENSI</title>
+  <title>ABSENSI SONAR</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
   <style>
     body {
-      font-family: Arial;
+      background: black;
+      color: #00ff66;
+      font-family: monospace;
       text-align: center;
-      background: #f5f5f5;
-      padding: 20px;
     }
 
-    .card {
-      background: white;
-      padding: 20px;
-      border-radius: 15px;
+    h2 {
+      color: #00ff66;
+      margin-top: 20px;
     }
 
-    .status { font-size: 20px; font-weight: bold; }
-    .green { color: green; }
-    .red { color: red; }
-
-    button {
-      padding: 15px;
-      font-size: 18px;
-      width: 100%;
-      border-radius: 10px;
-      border: none;
-      background: gray;
-      color: white;
-      margin-top: 10px;
-    }
-
-    button.active { background: green; }
-
-    /* ===== RADAR ===== */
     .radar {
       position: relative;
-      width: 200px;
-      height: 200px;
+      width: 260px;
+      height: 260px;
       margin: 20px auto;
       border-radius: 50%;
+      background: radial-gradient(circle, #001a00, #000);
+      box-shadow: 0 0 20px #00ff66 inset;
       overflow: hidden;
-      background: black;
     }
 
-    iframe {
+    /* lingkaran */
+    .ring {
       position: absolute;
-      width: 100%;
-      height: 100%;
-      border: none;
-      z-index: 1;
+      border: 1px solid rgba(0,255,100,0.3);
+      border-radius: 50%;
     }
 
-    .overlay {
-      position: absolute;
-      width: 100%;
-      height: 100%;
-      z-index: 2; /* PENTING */
-      pointer-events: none;
-    }
+    .ring:nth-child(1) { width: 100%; height: 100%; }
+    .ring:nth-child(2) { width: 75%; height: 75%; top: 12.5%; left: 12.5%; }
+    .ring:nth-child(3) { width: 50%; height: 50%; top: 25%; left: 25%; }
+    .ring:nth-child(4) { width: 25%; height: 25%; top: 37.5%; left: 37.5%; }
 
+    /* sweep */
     .sweep {
       position: absolute;
       width: 100%;
       height: 100%;
-      border-radius: 50%;
       background: conic-gradient(
         rgba(0,255,100,0.4),
-        transparent
+        transparent 60%
       );
-      animation: rotate 2s linear infinite;
+      animation: spin 2s linear infinite;
     }
 
-    @keyframes rotate {
+    @keyframes spin {
       100% { transform: rotate(360deg); }
     }
 
-    .center-dot {
+    /* titik hp */
+    .center {
       position: absolute;
       width: 10px;
       height: 10px;
-      background: lime;
+      background: #00ff66;
       border-radius: 50%;
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
     }
 
-    .target-dot {
+    /* target */
+    .target {
       position: absolute;
       width: 10px;
       height: 10px;
       background: red;
       border-radius: 50%;
+      transition: 0.3s;
     }
 
-    .target-lock {
-      animation: pulse 0.6s infinite alternate;
-      background: lime;
+    /* crosshair */
+    .crosshair {
+      position: absolute;
+      width: 30px;
+      height: 30px;
+      border: 2px solid #00ff66;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      display: none;
     }
 
-    @keyframes pulse {
-      from { transform: scale(1); }
-      to { transform: scale(1.6); }
+    .crosshair::before,
+    .crosshair::after {
+      content: "";
+      position: absolute;
+      background: #00ff66;
+    }
+
+    .crosshair::before {
+      width: 2px;
+      height: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+
+    .crosshair::after {
+      height: 2px;
+      width: 100%;
+      top: 50%;
+      transform: translateY(-50%);
+    }
+
+    .lock {
+      color: lime;
+      font-weight: bold;
+      margin-top: 10px;
+    }
+
+    button {
+      margin-top: 15px;
+      padding: 12px;
+      width: 80%;
+      font-size: 18px;
+      background: #003300;
+      color: #00ff66;
+      border: 1px solid #00ff66;
+      border-radius: 8px;
+    }
+
+    button.active {
+      background: #00aa00;
+      color: white;
     }
 
   </style>
@@ -114,26 +140,23 @@
 
 <h2>ABSENSI</h2>
 
-<div class="card">
+<div class="radar">
+  <div class="sweep"></div>
 
-  <div id="statusText" class="status red">Mencari lokasi...</div>
+  <div class="ring"></div>
+  <div class="ring"></div>
+  <div class="ring"></div>
+  <div class="ring"></div>
 
-  <div class="radar">
-    <iframe id="mapFrame"></iframe>
-
-    <div class="overlay">
-      <div class="sweep"></div>
-      <div class="center-dot"></div>
-      <div class="target-dot" id="targetDot"></div>
-    </div>
-  </div>
-
-  <p>Jarak: <span id="jarak">-</span></p>
-  <p>Akurasi: <span id="akurasi">-</span></p>
-
-  <button id="btnAbsen" disabled>ABSEN</button>
-
+  <div class="center"></div>
+  <div class="target" id="target"></div>
+  <div class="crosshair" id="crosshair"></div>
 </div>
+
+<div id="status">MENCARI TARGET...</div>
+<div>Jarak: <span id="jarak">-</span></div>
+
+<button id="btn" disabled>ABSEN</button>
 
 <script>
 
@@ -142,89 +165,62 @@ const TARGET_LNG = 106.4997284;
 const RADIUS = 50;
 
 let locked = false;
-let mapLoaded = false;
 
-// LOAD MAP SEKALI
-document.getElementById("mapFrame").src =
-  `https://maps.google.com/maps?q=${TARGET_LAT},${TARGET_LNG}&z=17&output=embed`;
-
-// HITUNG JARAK
-function hitungJarak(lat1, lon1, lat2, lon2) {
+// hitung jarak
+function distance(lat1, lon1, lat2, lon2) {
   const R = 6371000;
-  const dLat = (lat2 - lat1) * Math.PI/180;
-  const dLon = (lon2 - lon1) * Math.PI/180;
+  const dLat = (lat2-lat1) * Math.PI/180;
+  const dLon = (lon2-lon1) * Math.PI/180;
 
   const a = Math.sin(dLat/2)**2 +
     Math.cos(lat1*Math.PI/180) *
     Math.cos(lat2*Math.PI/180) *
     Math.sin(dLon/2)**2;
 
-  return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 }
 
-// GPS
 navigator.geolocation.watchPosition(pos => {
 
   let lat = pos.coords.latitude;
   let lng = pos.coords.longitude;
-  let accuracy = pos.coords.accuracy;
 
-  let jarak = hitungJarak(lat, lng, TARGET_LAT, TARGET_LNG);
+  let d = distance(lat, lng, TARGET_LAT, TARGET_LNG);
 
-  // UPDATE UI LANGSUNG
-  document.getElementById("jarak").innerText = Math.round(jarak) + " m";
-  document.getElementById("akurasi").innerText = "± " + Math.round(accuracy) + " m";
+  document.getElementById("jarak").innerText = Math.round(d) + " m";
 
-  document.getElementById("statusText").innerText = "Mencari lokasi...";
-  document.getElementById("statusText").className = "status red";
-
-  // UPDATE MAP SETIAP 3 DETIK (ANTI FREEZE)
-  if (!mapLoaded || Date.now() % 3000 < 100) {
-
-    document.getElementById("mapFrame").src =
-      `https://maps.google.com/maps?q=${lat},${lng}&z=18&output=embed`;
-
-    mapLoaded = true;
-  }
-
-  // POSISI TARGET
+  // posisi target di radar
   let dx = TARGET_LNG - lng;
   let dy = TARGET_LAT - lat;
 
-  let scale = 100000;
+  let scale = 120000;
 
   let x = dx * scale;
   let y = dy * scale;
 
-  let max = 80;
+  let max = 110;
   x = Math.max(-max, Math.min(max, x));
   y = Math.max(-max, Math.min(max, y));
 
-  let target = document.getElementById("targetDot");
+  let target = document.getElementById("target");
+  target.style.left = (130 + x) + "px";
+  target.style.top = (130 - y) + "px";
 
-  target.style.left = (100 + x) + "px";
-  target.style.top = (100 - y) + "px";
-
-  // LOCK
-  if (jarak <= RADIUS && !locked) {
-
+  // lock
+  if (d <= RADIUS && !locked) {
     locked = true;
 
-    document.getElementById("statusText").innerText = "TARGET TERKUNCI";
-    document.getElementById("statusText").className = "status green";
+    document.getElementById("status").innerText = "TARGET LOCK";
+    document.getElementById("status").className = "lock";
 
-    target.classList.add("target-lock");
+    document.getElementById("crosshair").style.display = "block";
 
-    document.getElementById("btnAbsen").disabled = false;
-    document.getElementById("btnAbsen").classList.add("active");
+    document.getElementById("btn").disabled = false;
+    document.getElementById("btn").classList.add("active");
   }
 
-}, err => {
-  document.getElementById("statusText").innerText = "GPS ERROR";
 },{
-  enableHighAccuracy: true,
-  maximumAge: 2000,
-  timeout: 10000
+  enableHighAccuracy: true
 });
 
 </script>
