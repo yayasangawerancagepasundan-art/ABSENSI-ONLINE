@@ -86,7 +86,7 @@
 
 <div class="card">
 
-  <!-- STATE 1 -->
+  <!-- LOADING -->
   <div id="loading">
     <div class="status red">Mencari lokasi...</div>
     <div class="loader"></div>
@@ -94,7 +94,7 @@
     <p>Akurasi: <span id="akurasi">-</span></p>
   </div>
 
-  <!-- STATE 2 -->
+  <!-- READY -->
   <div id="ready" style="display:none;">
     <div class="status green">Dalam Area</div>
     <p>Jarak: <span id="jarak2">-</span></p>
@@ -102,9 +102,9 @@
     <button id="btnAbsen" disabled>ABSEN</button>
   </div>
 
-  <!-- STATE 3 -->
+  <!-- RESULT -->
   <div id="result" style="display:none;">
-    <div id="statusResult" class="status green"></div>
+    <div id="statusResult" class="status"></div>
 
     <div class="row">
       <div class="label">Nama</div>
@@ -142,7 +142,7 @@
 
 <script>
 
-// ===== API =====
+// ===== API BARU =====
 const API = "https://script.google.com/macros/s/AKfycbxwlXN-GC8cavD_8z4k6x-m6-cItZVP2F8P8jkgEuU5N0L3oO3ToZLt0VAaL8xiGhg/exec";
 
 // ===== UID =====
@@ -171,11 +171,10 @@ function hitungJarak(lat1, lon1, lat2, lon2) {
     Math.sin(dLon/2) * Math.sin(dLon/2);
 
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-
   return R * c;
 }
 
-// ===== SATU-SATUNYA GPS (FIX) =====
+// ===== GPS =====
 navigator.geolocation.watchPosition(pos => {
 
   currentLat = pos.coords.latitude;
@@ -184,11 +183,9 @@ navigator.geolocation.watchPosition(pos => {
   const accuracy = pos.coords.accuracy;
   const jarak = hitungJarak(currentLat, currentLng, TARGET_LAT, TARGET_LNG);
 
-  // update loading
   document.getElementById("jarak").innerText = Math.round(jarak) + " m";
   document.getElementById("akurasi").innerText = "± " + Math.round(accuracy) + " m";
 
-  // update ready juga biar tidak beku
   if(document.getElementById("jarak2")){
     document.getElementById("jarak2").innerText = Math.round(jarak) + " m";
     document.getElementById("akurasi2").innerText = "± " + Math.round(accuracy) + " m";
@@ -226,25 +223,40 @@ document.getElementById("btnAbsen").onclick = async function(){
   document.getElementById("ready").style.display = "none";
   document.getElementById("result").style.display = "block";
 
+  const now = new Date();
+  document.getElementById("tanggal").innerText = now.toLocaleDateString("id-ID");
+  document.getElementById("jam").innerText = now.toLocaleTimeString("id-ID");
+
+  document.getElementById("gps").innerText =
+    currentLat.toFixed(6) + ", " + currentLng.toFixed(6);
+
   if(data.status == "OK"){
 
     document.getElementById("statusResult").innerText = "ABSEN " + data.aksi;
+    document.getElementById("statusResult").className = "status green";
 
     document.getElementById("nama").innerText = data.nama;
     document.getElementById("gudang").innerText = data.gudang;
 
-    document.getElementById("gps").innerText =
-      currentLat.toFixed(6) + ", " + currentLng.toFixed(6);
+  }
+  else if(data.status == "DITOLAK"){
 
-    const now = new Date();
-    document.getElementById("tanggal").innerText = now.toLocaleDateString("id-ID");
-    document.getElementById("jam").innerText = now.toLocaleTimeString("id-ID");
+    document.getElementById("statusResult").innerText = "DITOLAK";
+    document.getElementById("statusResult").className = "status red";
 
-  } else {
-    document.getElementById("statusResult").innerText = "Gagal";
+    document.getElementById("nama").innerText = data.pesan;
+    document.getElementById("gudang").innerText = "-";
+
+  }
+  else{
+
+    document.getElementById("statusResult").innerText = "ERROR";
+    document.getElementById("statusResult").className = "status red";
+
   }
 
 };
+
 </script>
 
 </body>
