@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ABSENSI FINAL</title>
+<title>ABSENSI FIX</title>
 
 <style>
 body{
@@ -19,27 +19,22 @@ button{padding:10px 18px;background:#22c55e;border:none;border-radius:8px;color:
 
 <body>
 
-<!-- SCAN -->
 <div id="scanPage">
 <h2>ABSENSI</h2>
 <p>UID: <span id="uid">-</span></p>
-<button onclick="startScan()">SCAN KARTU</button>
-<p id="status">Menunggu scan...</p>
+<button onclick="startScan()">SCAN</button>
 </div>
 
-<!-- LOKASI -->
 <div id="locationPage" class="hidden">
-<h3>📍 Cek Lokasi</h3>
+<h3>📍 Lokasi</h3>
 <p id="locStatus">...</p>
 </div>
 
-<!-- KAMERA -->
 <div id="cameraPage" class="hidden">
 <h3>📸 Kamera</h3>
 <video id="video" autoplay playsinline></video>
 </div>
 
-<!-- RESULT -->
 <div id="resultPage" class="hidden">
 <h3>✅ BERHASIL</h3>
 <p id="nama"></p>
@@ -59,18 +54,10 @@ async function startScan(){
     const ndef = new NDEFReader();
     await ndef.scan();
 
-    document.getElementById("status").innerText="Tempel kartu...";
-
     ndef.onreading = (event)=>{
-      let uid = event.serialNumber;
+      window.uid = event.serialNumber;
 
-      if(!uid){
-        alert("UID tidak terbaca");
-        return;
-      }
-
-      window.uid = uid;
-      document.getElementById("uid").innerText = uid;
+      document.getElementById("uid").innerText = window.uid;
 
       document.getElementById("scanPage").classList.add("hidden");
       document.getElementById("locationPage").classList.remove("hidden");
@@ -88,28 +75,20 @@ function getLocation(){
 
 navigator.geolocation.getCurrentPosition(async (pos)=>{
 
-  let lat = pos.coords.latitude;
-  let lng = pos.coords.longitude;
+  window.lat = pos.coords.latitude;
+  window.lng = pos.coords.longitude;
 
-  window.lat = lat;
-  window.lng = lng;
+  document.getElementById("locStatus").innerText="Validasi...";
 
-  document.getElementById("locStatus").innerText="Validasi lokasi...";
+  let res = await fetch(`${URL}?uid=${window.uid}&lat=${window.lat}&lng=${window.lng}`);
+  let data = await res.json();
 
-  try{
-    let res = await fetch(`${URL}?uid=${window.uid}&lat=${lat}&lng=${lng}`);
-    let data = await res.json();
-
-    if(data.status==="IN_RANGE"){
-      window.nama = data.nama;
-      window.gudang = data.gudang;
-      openCamera();
-    }else{
-      document.getElementById("locStatus").innerText="Diluar area ❌";
-    }
-
-  }catch(e){
-    alert("Gagal koneksi lokasi");
+  if(data.status==="IN_RANGE"){
+    window.nama = data.nama;
+    window.gudang = data.gudang;
+    openCamera();
+  }else{
+    document.getElementById("locStatus").innerText="Diluar area ❌";
   }
 
 });
@@ -146,32 +125,25 @@ let foto = canvas.toDataURL("image/jpeg",0.5);
 sendData(foto);
 }
 
-/* KIRIM DATA (FIX) */
+/* 🔥 KIRIM DATA FINAL (GET - PASTI MASUK) */
 function sendData(foto){
 
-try{
+// 🔥 KIRIM KE APPS SCRIPT
+let url = `${URL}?mode=absen&uid=${window.uid}&lat=${window.lat}&lng=${window.lng}`;
 
-let params = new URLSearchParams();
-params.append("uid", window.uid);
-params.append("lat", window.lat);
-params.append("lng", window.lng);
+// PANGGIL TANPA MENUNGGU
+fetch(url);
 
-navigator.sendBeacon(URL, params);
-
-/* stop kamera */
+// STOP kamera
 stream.getTracks().forEach(t=>t.stop());
 
-/* tampilkan hasil */
+// TAMPILKAN HASIL
 document.getElementById("cameraPage").classList.add("hidden");
 document.getElementById("resultPage").classList.remove("hidden");
 
 document.getElementById("nama").innerText = window.nama;
 document.getElementById("gudang").innerText = window.gudang;
 document.getElementById("fotoSelfie").src = foto;
-
-}catch(e){
-  alert("Gagal kirim data");
-}
 
 }
 
