@@ -38,13 +38,26 @@ button {
   width:80%;
 }
 
-#infoPage,#thankPage {
+#infoPage,#thankPage,#warningPage {
   display:none;
-  background:white;
-  color:black;
   margin:10px;
   padding:10px;
   border-radius:10px;
+}
+
+#infoPage {
+  background:white;
+  color:black;
+}
+
+#thankPage {
+  background:white;
+  color:black;
+}
+
+#warningPage {
+  background:black;
+  color:red;
 }
 
 video,img {
@@ -103,6 +116,13 @@ video,img {
 <p>Menutup dalam <span id="countdown">10</span> detik...</p>
 </div>
 
+<!-- WARNING -->
+<div id="warningPage">
+<h1 style="font-size:60px;">⚠️</h1>
+<h2 id="warningText">WARNING</h2>
+<p>Menutup dalam <span id="warningCountdown">5</span> detik...</p>
+</div>
+
 <script>
 
 // ===== ELEMENT =====
@@ -114,6 +134,7 @@ const retake = document.getElementById("retake");
 const mainPage = document.getElementById("mainPage");
 const infoPage = document.getElementById("infoPage");
 const thankPage = document.getElementById("thankPage");
+const warningPage = document.getElementById("warningPage");
 
 const nama = document.getElementById("nama");
 const tanggal = document.getElementById("tanggal");
@@ -183,7 +204,40 @@ btnAbsen.onclick=()=>{
   .then(data=>{
 
     if(data.status !== "OK"){
-      alert(data.status);
+
+      mainPage.style.display="none";
+      warningPage.style.display="block";
+
+      const text = document.getElementById("warningText");
+
+      if(data.pesan && data.pesan.includes("3 jam")){
+        text.innerText = "BELUM 3 JAM (TIDAK BISA KELUAR)";
+      }else if(data.pesan && data.pesan.includes("10 menit")){
+        text.innerText = "BELUM 10 MENIT (TIDAK BISA MASUK)";
+      }else{
+        text.innerText = data.pesan || "DITOLAK";
+      }
+
+      // countdown 5 detik
+      let sisa = 5;
+      const cd = document.getElementById("warningCountdown");
+      cd.innerText = sisa;
+
+      const timer = setInterval(()=>{
+        sisa--;
+        cd.innerText = sisa;
+
+        if(sisa <= 2){
+          cd.style.color = "yellow";
+        }
+
+        if(sisa <= 0){
+          clearInterval(timer);
+          window.close();
+        }
+
+      },1000);
+
       return;
     }
 
@@ -226,24 +280,23 @@ retake.onclick=()=>{
   confirmBtn.disabled=true;
 };
 
-// ===== KONFIRMASI + COUNTDOWN =====
+// ===== KONFIRMASI =====
 confirmBtn.onclick = () => {
 
   infoPage.style.display="none";
   thankPage.style.display="block";
 
   let sisa = 10;
-  const countdownEl = document.getElementById("countdown");
+  const cd = document.getElementById("countdown");
 
-  countdownEl.innerText = sisa;
+  cd.innerText = sisa;
 
   const timer = setInterval(()=>{
     sisa--;
-    countdownEl.innerText = sisa;
+    cd.innerText = sisa;
 
-    // opsional: merah di akhir
     if(sisa <= 3){
-      countdownEl.style.color = "red";
+      cd.style.color = "red";
     }
 
     if(sisa <= 0){
