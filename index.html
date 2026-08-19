@@ -8,8 +8,8 @@
     body {
       font-family: Arial;
       text-align: center;
-      padding: 20px;
       background: #f5f5f5;
+      padding: 20px;
     }
 
     .card {
@@ -20,13 +20,13 @@
     }
 
     .status {
-      font-size: 20px;
-      margin-bottom: 15px;
+      font-size: 22px;
       font-weight: bold;
+      margin-bottom: 10px;
     }
 
-    .red { color: red; }
-    .green { color: green; }
+    .red { color:red; }
+    .green { color:green; }
 
     .loader {
       border: 6px solid #eee;
@@ -43,20 +43,15 @@
       100% { transform: rotate(360deg); }
     }
 
-    button {
-      padding: 15px;
-      font-size: 18px;
-      background: gray;
-      color: white;
-      border: none;
-      border-radius: 10px;
-      width: 100%;
-      margin-top: 20px;
+    .row {
+      display: flex;
+      justify-content: space-between;
+      margin: 5px 0;
     }
 
-    button.active {
-      background: green;
-    }
+    .label { font-weight: bold; width: 40%; text-align:left; }
+    .value { width: 60%; text-align:left; }
+
   </style>
 </head>
 
@@ -70,87 +65,100 @@
 
   <div class="loader" id="loader"></div>
 
-  <p>Jarak: <span id="jarak">-</span></p>
-
-  <button id="btnAbsen" disabled>ABSEN</button>
+  <div class="row"><div class="label">Nama</div><div id="nama" class="value">-</div></div>
+  <div class="row"><div class="label">Tanggal</div><div id="tgl" class="value">-</div></div>
+  <div class="row"><div class="label">Jam</div><div id="jam" class="value">-</div></div>
+  <div class="row"><div class="label">Gudang</div><div id="gudang" class="value">-</div></div>
+  <div class="row"><div class="label">Jarak</div><div id="jarak" class="value">-</div></div>
 
 </div>
 
 <script>
 
-// ====== SETTING ======
-const TARGET_LAT = -6.2341459;   // ganti sesuai gudang
-const TARGET_LNG = 106.4997284;  // ganti sesuai gudang
-const RADIUS = 50; // meter
+// ===== API BARU =====
+const API = "https://script.google.com/macros/s/AKfycbxwlXN-GC8cavD_8z4k6x-m6-cItZVP2F8P8jkgEuU5N0L3oO3ToZLt0VAaL8xiGhg/exec";
 
-let sudahDalamArea = false;
+// ===== AMBIL UID =====
+const params = new URLSearchParams(window.location.search);
+const uid = params.get("uid");
 
-// ====== HITUNG JARAK ======
-function hitungJarak(lat1, lon1, lat2, lon2) {
+if(!uid){
+  document.getElementById("status").innerText = "UID tidak ditemukan";
+}
+
+// ===== HITUNG JARAK =====
+function hitungJarak(lat1, lon1, lat2, lon2){
   const R = 6371000;
-  const dLat = (lat2 - lat1) * Math.PI/180;
-  const dLon = (lon2 - lon1) * Math.PI/180;
+  const dLat = (lat2-lat1) * Math.PI/180;
+  const dLon = (lon2-lon1) * Math.PI/180;
 
   const a =
-    Math.sin(dLat/2) * Math.sin(dLat/2) +
-    Math.cos(lat1 * Math.PI/180) *
-    Math.cos(lat2 * Math.PI/180) *
-    Math.sin(dLon/2) * Math.sin(dLon/2);
+    Math.sin(dLat/2)*Math.sin(dLat/2) +
+    Math.cos(lat1*Math.PI/180) *
+    Math.cos(lat2*Math.PI/180) *
+    Math.sin(dLon/2)*Math.sin(dLon/2);
 
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-  return R * c;
+  const c = 2*Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+  return R*c;
 }
 
-// ====== TRACKING LIVE ======
-function startTracking() {
+// ===== TRACKING GPS REALTIME =====
+let sudahKirim = false;
 
-  if (!navigator.geolocation) {
-    alert("HP tidak support GPS");
-    return;
-  }
+navigator.geolocation.watchPosition(async pos => {
 
-  navigator.geolocation.watchPosition(pos => {
+  const lat = pos.coords.latitude;
+  const lng = pos.coords.longitude;
 
-    const lat = pos.coords.latitude;
-    const lng = pos.coords.longitude;
+  document.getElementById("status").innerText = "Menghitung jarak...";
 
-    const jarak = hitungJarak(lat, lng, TARGET_LAT, TARGET_LNG);
+  try{
 
-    document.getElementById("jarak").innerText =
-      Math.round(jarak) + " m";
+    let res = await fetch(API + "?uid=" + uid + "&lat=" + lat + "&lng=" + lng);
+    let data = await res.json();
 
-    // ====== CEK RADIUS ======
-    if (jarak <= RADIUS) {
-
-      if (!sudahDalamArea) {
-        sudahDalamArea = true;
-
-        document.getElementById("status").innerText = "Dalam Area";
-        document.getElementById("status").className = "status green";
-
-        document.getElementById("loader").style.display = "none";
-
-        let btn = document.getElementById("btnAbsen");
-        btn.disabled = false;
-        btn.classList.add("active");
-      }
-
-    } else {
+    // ===== LUAR AREA =====
+    if(data.status == "OUTSIDE"){
       document.getElementById("status").innerText = "Diluar Area";
       document.getElementById("status").className = "status red";
+      document.getElementById("jarak").innerText = data.jarak + " m";
+      return;
     }
 
-  }, err => {
-    document.getElementById("status").innerText = "Gagal ambil lokasi";
-  }, {
-    enableHighAccuracy: true,
-    maximumAge: 0,
-    timeout: 10000
-  });
-}
+    // ===== DALAM AREA =====
+    if(data.status == "OK" && !sudahKirim){
 
-// START
-startTracking();
+      sudahKirim = true;
+
+      document.getElementById("loader").style.display = "none";
+
+      document.getElementById("status").innerText = "ABSEN " + data.aksi;
+      document.getElementById("status").className = "status green";
+
+      document.getElementById("nama").innerText = data.nama;
+      document.getElementById("gudang").innerText = data.gudang;
+
+      const now = new Date();
+      document.getElementById("tgl").innerText = now.toLocaleDateString("id-ID");
+      document.getElementById("jam").innerText = now.toLocaleTimeString("id-ID");
+
+      // auto close / reset
+      setTimeout(()=>{
+        window.location.href = window.location.pathname;
+      },10000);
+
+    }
+
+  }catch(e){
+    document.getElementById("status").innerText = "Gagal koneksi";
+  }
+
+},{
+  enableHighAccuracy:true,
+  maximumAge:0,
+  timeout:10000
+});
 
 </script>
 
