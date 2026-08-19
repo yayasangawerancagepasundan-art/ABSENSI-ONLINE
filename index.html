@@ -1,128 +1,66 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Absensi Karyawan</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-  <style>
-    body {
-      font-family: Arial;
-      text-align: center;
-      padding: 20px;
-      background: #f5f5f5;
-    }
-
-    button {
-      padding: 15px;
-      font-size: 18px;
-      background: green;
-      color: white;
-      border: none;
-      border-radius: 10px;
-      width: 100%;
-      margin-top: 10px;
-    }
-
-    input {
-      padding: 10px;
-      width: 100%;
-      margin-top: 10px;
-      font-size: 16px;
-    }
-
-    .box {
-      margin-top: 20px;
-      padding: 15px;
-      background: white;
-      border-radius: 10px;
-    }
-  </style>
+  <title>Scan NFC</title>
 </head>
 
-<body>
+<body style="text-align:center; font-family:Arial; padding:20px;">
 
-<h2>ABSENSI KARYAWAN</h2>
+<h2>ABSENSI NFC</h2>
 
-<button onclick="scanNFC()">SCAN NFC</button>
+<button onclick="scanNFC()" style="padding:15px; font-size:18px;">
+SCAN KARTU
+</button>
 
-<input type="text" id="manualUID" placeholder="Masukkan UID manual (jika NFC gagal)">
-
-<button onclick="kirimManual()">KIRIM MANUAL</button>
-
-<div class="box">
-  <p id="status">Status: -</p>
-  <p id="nama">Nama: -</p>
-  <p id="gudang">Gudang: -</p>
-</div>
+<p id="hasil">UID: -</p>
+<p id="server">Server: -</p>
 
 <script>
 
-const URL = "https://script.google.com/macros/s/AKfycbxQYvZIxsv-KrVS2k3wKtmAtq3iOQuoz2PErPJP764YIvOiKv8lvx8IcFO44-tQc4A/exec";
-
-// ================= NFC =================
 async function scanNFC() {
+
   try {
+
     const ndef = new NDEFReader();
     await ndef.scan();
 
-    document.getElementById("status").innerText = "Tempelkan kartu...";
+    document.getElementById("hasil").innerText = "Tempel kartu...";
 
-    ndef.onreading = (event) => {
-      let uid = "";
+    ndef.onreading = async (event) => {
+
+      const decoder = new TextDecoder();
+
+      let text = "";
 
       for (const record of event.message.records) {
-        uid = new TextDecoder().decode(record.data);
+        text = decoder.decode(record.data);
       }
 
-      kirim(uid);
+      document.getElementById("hasil").innerText = "UID: " + text;
+
+      // 🔥 KIRIM KE SERVER
+      let res = await fetch("https://script.google.com/macros/s/AKfycbyrlWCsEXuAFpv0qdAw7JLclCjjooQ3MT3wg3LKgT0CxWEa9mBGOw_9QF83mrR3toY/exec", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          uid: text
+        })
+      });
+
+      let data = await res.json();
+
+      document.getElementById("server").innerText = "Server: " + JSON.stringify(data);
+
     };
 
-  } catch (error) {
-    alert("HP tidak support NFC browser");
+  } catch (err) {
+    alert("HP tidak support NFC / belum aktif");
+    console.log(err);
   }
-}
 
-// ================= MANUAL =================
-function kirimManual() {
-  let uid = document.getElementById("manualUID").value;
-  if (!uid) return alert("Isi UID dulu");
-  kirim(uid);
-}
-
-// ================= KIRIM KE SERVER =================
-function kirim(uid) {
-
-  document.getElementById("status").innerText = "Ambil lokasi...";
-
-  navigator.geolocation.getCurrentPosition(async function(pos) {
-
-    let lat = pos.coords.latitude;
-    let lng = pos.coords.longitude;
-
-    document.getElementById("status").innerText = "Kirim ke server...";
-
-    let res = await fetch(URL, {
-      method: "POST",
-      body: JSON.stringify({
-        uid: uid,
-        lat: lat,
-        lng: lng
-      })
-    });
-
-    let data = await res.json();
-
-    if (data.status == "SUCCESS") {
-      document.getElementById("status").innerText = data.message || "Berhasil";
-      document.getElementById("nama").innerText = "Nama: " + data.nama;
-      document.getElementById("gudang").innerText = "Gudang: " + data.gudang;
-    } else {
-      document.getElementById("status").innerText = data.message || "Tidak terdaftar";
-    }
-
-  }, function() {
-    alert("Gagal ambil lokasi");
-  });
 }
 
 </script>
