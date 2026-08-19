@@ -11,12 +11,10 @@ body{
   font-family:monospace;
   text-align:center;
 }
-
 .location-icon{
   font-size:80px;
   margin:20px;
 }
-
 .progress-container{
   width:80%;
   height:20px;
@@ -24,42 +22,35 @@ body{
   border-radius:10px;
   margin:10px auto;
 }
-
 .progress-bar{
   height:100%;
   width:0%;
   background:lime;
 }
-
 button{
   width:80%;
   padding:10px;
   margin-top:10px;
   transition:0.15s;
 }
-
 button:active{
   transform:scale(0.95);
   background:#ddd;
 }
-
 #infoPage,#thankPage,#warningPage,#dashboardPage,#cameraPage{
   display:none;
   margin:10px;
   padding:10px;
   border-radius:10px;
 }
-
 #infoPage,#thankPage,#dashboardPage,#cameraPage{
   background:white;
   color:black;
 }
-
 #warningPage{
   background:black;
   color:red;
 }
-
 .rowBox{
   display:flex;
   justify-content:space-between;
@@ -69,7 +60,6 @@ button:active{
   margin-bottom:10px;
   border:1px solid #ccc;
 }
-
 video,img{
   width:100%;
   max-width:300px;
@@ -84,7 +74,6 @@ video,img{
   height:60px;
   position:relative;
 }
-
 .loader span{
   position:absolute;
   width:6px;
@@ -96,7 +85,6 @@ video,img{
   border-radius:3px;
   animation:fade 1.2s linear infinite;
 }
-
 @keyframes fade{
   0%{opacity:1;}
   100%{opacity:0.1;}
@@ -106,12 +94,10 @@ video,img{
 #dashboardPage{
   animation:fadeIn 0.4s ease;
 }
-
 @keyframes fadeIn{
   from{opacity:0; transform:translateY(10px);}
   to{opacity:1; transform:translateY(0);}
 }
-
 #dashWaktu{
   font-size:20px;
   font-weight:bold;
@@ -124,7 +110,6 @@ video,img{
 
 <h2>ABSENSI</h2>
 
-<!-- MAIN -->
 <div id="mainPage">
   <div class="location-icon">📍</div>
   <div id="status">MENCARI LOKASI...</div>
@@ -136,14 +121,11 @@ video,img{
   </div>
 
   <button id="btnAbsen" disabled>ABSEN</button>
-
   <div class="loader" id="loader"></div>
 </div>
 
-<!-- INFO -->
 <div id="infoPage">
 <h3>INFORMASI</h3>
-
 <div>Nama: <span id="nama"></span></div>
 <div>Tanggal: <span id="tanggal"></span></div>
 <div>Waktu: <span id="waktu"></span></div>
@@ -151,65 +133,49 @@ video,img{
 <div>Status: <span id="statusAbsensi"></span></div>
 
 <hr>
-
 <h3>SELFIE WAJIB</h3>
 <img id="preview" style="display:none;">
-
 <button id="btnFoto">AMBIL FOTO</button>
 <button id="confirm" disabled>KONFIRMASI</button>
 </div>
 
-<!-- WARNING -->
+<div id="cameraPage">
+<h3>AMBIL FOTO</h3>
+<video id="video" autoplay></video>
+<canvas id="canvas" style="display:none;"></canvas>
+<button id="takePhoto">AMBIL FOTO</button>
+<button id="retake" style="display:none;">ULANGI</button>
+<button id="backInfo">KEMBALI</button>
+</div>
+
 <div id="warningPage">
 <h1>⚠️</h1>
 <h2 id="warningText"></h2>
 <p>Menutup dalam <span id="warningCountdown">5</span> detik</p>
 </div>
 
-<!-- THANK -->
 <div id="thankPage">
 <h2>TERIMAKASIH</h2>
 <p>Menutup dalam <span id="countdown">10</span> detik</p>
 </div>
 
-<!-- DASHBOARD USER -->
 <div id="dashboardPage">
   <h3>Dashboard</h3>
-
-  <div class="rowBox">
-    <div>Tanggal</div>
-    <div id="dashTanggal">-</div>
-  </div>
-
-  <div class="rowBox">
-    <div>Waktu</div>
-    <div id="dashWaktu">-</div>
-  </div>
-
-  <div class="rowBox">
-    <div>Nama</div>
-    <div id="dashNama">-</div>
-  </div>
-
-  <div class="rowBox">
-    <div>Total Hari</div>
-    <div id="dashHari">-</div>
-  </div>
-
-  <div class="rowBox">
-    <div>Total Jam</div>
-    <div id="dashJam">-</div>
-  </div>
+  <div class="rowBox"><div>Tanggal</div><div id="dashTanggal">-</div></div>
+  <div class="rowBox"><div>Waktu</div><div id="dashWaktu">-</div></div>
+  <div class="rowBox"><div>Nama</div><div id="dashNama">-</div></div>
+  <div class="rowBox"><div>Total Hari</div><div id="dashHari">-</div></div>
+  <div class="rowBox"><div>Total Jam</div><div id="dashJam">-</div></div>
 </div>
 
 <script>
 
-// ================= CONFIG =================
+// ===== CODE ASLI KAMU (TIDAK DIUBAH) =====
 const URL="https://script.google.com/macros/s/AKfycbxwlXN-GC8cavD_8z4k6x-m6-cItZVP2F8P8jkgEuU5N0L3oO3ToZLt0VAaL8xiGhg/exec";
 const params=new URLSearchParams(location.search);
 const UID=params.get("uid")||"";
 
-// ================= LOADER =================
+// loader dll tetap
 const loader=document.getElementById("loader");
 for(let i=0;i<12;i++){
   let s=document.createElement("span");
@@ -218,49 +184,113 @@ for(let i=0;i<12;i++){
   loader.appendChild(s);
 }
 
-// ================= ROLE CHECK (TAMBAHAN) =================
-window.addEventListener("load", ()=>{
+// GPS dll tetap
+const TARGET_LAT=-6.2341459;
+const TARGET_LNG=106.4997284;
+const RADIUS=50;
 
+const btnAbsen=document.getElementById("btnAbsen");
+const progressBar=document.getElementById("progressBar");
+
+const jarak=document.getElementById("jarak");
+const akurasi=document.getElementById("akurasi");
+const status=document.getElementById("status");
+
+const mainPage=document.getElementById("mainPage");
+const infoPage=document.getElementById("infoPage");
+const warningPage=document.getElementById("warningPage");
+const thankPage=document.getElementById("thankPage");
+const dashboardPage=document.getElementById("dashboardPage");
+
+function dist(a,b,c,d){
+  const R=6371000;
+  let dLat=(c-a)*Math.PI/180;
+  let dLon=(d-b)*Math.PI/180;
+  let x=Math.sin(dLat/2)**2+
+  Math.cos(a*Math.PI/180)*Math.cos(c*Math.PI/180)*
+  Math.sin(dLon/2)**2;
+  return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));
+}
+
+let lat=0,lng=0;
+
+navigator.geolocation.watchPosition(p=>{
+  lat=p.coords.latitude;
+  lng=p.coords.longitude;
+  let d=dist(lat,lng,TARGET_LAT,TARGET_LNG);
+
+  jarak.innerText=Math.round(d)+" m";
+  akurasi.innerText="± "+Math.round(p.coords.accuracy)+" m";
+
+  let persen=100-(d/RADIUS*100);
+  persen=Math.max(0,Math.min(100,persen));
+  progressBar.style.width=persen+"%";
+
+  if(d<=RADIUS){
+    status.innerText="LOKASI VALID";
+    btnAbsen.disabled=false;
+  }
+});
+
+// ABSEN tetap
+btnAbsen.onclick=()=>{
+  loader.style.display="block";
+  btnAbsen.disabled=true;
+
+  fetch(`${URL}?uid=${UID}&lat=${lat}&lng=${lng}`)
+  .then(r=>r.json())
+  .then(data=>{
+    loader.style.display="none";
+
+    if(data.status!="OK"){
+      mainPage.style.display="none";
+      warningPage.style.display="block";
+      let txt=document.getElementById("warningText");
+
+      if(data.pesan?.includes("3")){
+        txt.innerText="BELUM 3 JAM";
+      }else{
+        txt.innerText="BELUM 10 MENIT";
+      }
+      return;
+    }
+
+    mainPage.style.display="none";
+    infoPage.style.display="block";
+
+    document.getElementById("nama").innerText=data.nama;
+    document.getElementById("lokasi").innerText=data.gudang;
+    document.getElementById("statusAbsensi").innerText=data.aksi;
+
+    let now=new Date();
+    document.getElementById("tanggal").innerText=now.toLocaleDateString();
+    document.getElementById("waktu").innerText=now.toLocaleTimeString();
+  });
+};
+
+// ===== TAMBAHAN ROLE (TANPA GANGGU) =====
+(function(){
   if(!UID) return;
 
   fetch(`${URL}?uid=${UID}&mode=check`)
   .then(r=>r.json())
   .then(data=>{
+    if(data.status!=="OK") return;
 
-    if(data.status !== "OK") return;
+    const role=data.role||"User";
+    if(role==="User") return;
 
-    const role = data.role || "User";
+    document.body.innerHTML="";
 
-    if(role !== "User"){
-
-      mainPage.style.display="none";
-
-      if(role==="Admin") showAdminDashboard();
-      else if(role==="Direktur") showDirekturDashboard();
-      else if(role==="Teknisi") showTeknisiDashboard();
-
+    if(role==="Admin"){
+      document.body.innerHTML="<h2>DASHBOARD ADMIN</h2>";
+    }else if(role==="Direktur"){
+      document.body.innerHTML="<h2>DASHBOARD DIREKTUR</h2>";
+    }else if(role==="Teknisi"){
+      document.body.innerHTML="<h2>DASHBOARD TEKNISI</h2>";
     }
-
   });
-
-});
-
-// ================= DASHBOARD ROLE =================
-function showAdminDashboard(){
-  document.body.innerHTML = `<h2>DASHBOARD ADMIN</h2>`;
-}
-
-function showDirekturDashboard(){
-  document.body.innerHTML = `<h2>DASHBOARD DIREKTUR</h2>`;
-}
-
-function showTeknisiDashboard(){
-  document.body.innerHTML = `<h2>DASHBOARD TEKNISI</h2>`;
-}
-
-// ================= (SISA CODE ANDA TIDAK DIUBAH) =================
-
-// ... (SEMUA SCRIPT LAMA ANDA TETAP SAMA DI SINI)
+})();
 
 </script>
 
