@@ -11,10 +11,12 @@ body{
   font-family:monospace;
   text-align:center;
 }
+
 .location-icon{
   font-size:80px;
   margin:20px;
 }
+
 .progress-container{
   width:80%;
   height:20px;
@@ -22,35 +24,42 @@ body{
   border-radius:10px;
   margin:10px auto;
 }
+
 .progress-bar{
   height:100%;
   width:0%;
   background:lime;
 }
+
 button{
   width:80%;
   padding:10px;
   margin-top:10px;
   transition:0.15s;
 }
+
 button:active{
   transform:scale(0.95);
   background:#ddd;
 }
+
 #infoPage,#thankPage,#warningPage,#dashboardPage,#cameraPage{
   display:none;
   margin:10px;
   padding:10px;
   border-radius:10px;
 }
+
 #infoPage,#thankPage,#dashboardPage,#cameraPage{
   background:white;
   color:black;
 }
+
 #warningPage{
   background:black;
   color:red;
 }
+
 .rowBox{
   display:flex;
   justify-content:space-between;
@@ -60,6 +69,7 @@ button:active{
   margin-bottom:10px;
   border:1px solid #ccc;
 }
+
 video,img{
   width:100%;
   max-width:300px;
@@ -74,6 +84,7 @@ video,img{
   height:60px;
   position:relative;
 }
+
 .loader span{
   position:absolute;
   width:6px;
@@ -85,19 +96,22 @@ video,img{
   border-radius:3px;
   animation:fade 1.2s linear infinite;
 }
+
 @keyframes fade{
   0%{opacity:1;}
   100%{opacity:0.1;}
 }
 
-/* DASHBOARD */
+/* DASHBOARD STYLE */
 #dashboardPage{
   animation:fadeIn 0.4s ease;
 }
+
 @keyframes fadeIn{
   from{opacity:0; transform:translateY(10px);}
   to{opacity:1; transform:translateY(0);}
 }
+
 #dashWaktu{
   font-size:20px;
   font-weight:bold;
@@ -133,6 +147,7 @@ video,img{
 <div>Status: <span id="statusAbsensi"></span></div>
 
 <hr>
+
 <h3>SELFIE WAJIB</h3>
 <img id="preview" style="display:none;">
 <button id="btnFoto">AMBIL FOTO</button>
@@ -161,6 +176,7 @@ video,img{
 
 <div id="dashboardPage">
   <h3>Dashboard</h3>
+
   <div class="rowBox"><div>Tanggal</div><div id="dashTanggal">-</div></div>
   <div class="rowBox"><div>Waktu</div><div id="dashWaktu">-</div></div>
   <div class="rowBox"><div>Nama</div><div id="dashNama">-</div></div>
@@ -170,12 +186,27 @@ video,img{
 
 <script>
 
-// ===== CODE ASLI KAMU (TIDAK DIUBAH) =====
+// CONFIG
 const URL="https://script.google.com/macros/s/AKfycbxwlXN-GC8cavD_8z4k6x-m6-cItZVP2F8P8jkgEuU5N0L3oO3ToZLt0VAaL8xiGhg/exec";
 const params=new URLSearchParams(location.search);
 const UID=params.get("uid")||"";
 
-// loader dll tetap
+// ✅ TAMBAHAN (BYPASS ROLE)
+const paramsPage = new URLSearchParams(location.search);
+const page = paramsPage.get("page");
+
+if(page){
+  mainPage.style.display="none";
+  infoPage.style.display="none";
+  warningPage.style.display="none";
+  thankPage.style.display="none";
+  dashboardPage.style.display="none";
+  cameraPage.style.display="none";
+
+  showDashboard();
+}
+
+// LOADER
 const loader=document.getElementById("loader");
 for(let i=0;i<12;i++){
   let s=document.createElement("span");
@@ -184,14 +215,14 @@ for(let i=0;i<12;i++){
   loader.appendChild(s);
 }
 
-// GPS dll tetap
+// TARGET
 const TARGET_LAT=-6.2341459;
 const TARGET_LNG=106.4997284;
 const RADIUS=50;
 
+// ELEMENT
 const btnAbsen=document.getElementById("btnAbsen");
 const progressBar=document.getElementById("progressBar");
-
 const jarak=document.getElementById("jarak");
 const akurasi=document.getElementById("akurasi");
 const status=document.getElementById("status");
@@ -201,7 +232,9 @@ const infoPage=document.getElementById("infoPage");
 const warningPage=document.getElementById("warningPage");
 const thankPage=document.getElementById("thankPage");
 const dashboardPage=document.getElementById("dashboardPage");
+const cameraPage=document.getElementById("cameraPage");
 
+// DISTANCE
 function dist(a,b,c,d){
   const R=6371000;
   let dLat=(c-a)*Math.PI/180;
@@ -212,11 +245,13 @@ function dist(a,b,c,d){
   return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));
 }
 
+// GPS
 let lat=0,lng=0;
 
 navigator.geolocation.watchPosition(p=>{
   lat=p.coords.latitude;
   lng=p.coords.longitude;
+
   let d=dist(lat,lng,TARGET_LAT,TARGET_LNG);
 
   jarak.innerText=Math.round(d)+" m";
@@ -232,7 +267,7 @@ navigator.geolocation.watchPosition(p=>{
   }
 });
 
-// ABSEN tetap
+// ABSEN
 btnAbsen.onclick=()=>{
   loader.style.display="block";
   btnAbsen.disabled=true;
@@ -240,18 +275,29 @@ btnAbsen.onclick=()=>{
   fetch(`${URL}?uid=${UID}&lat=${lat}&lng=${lng}`)
   .then(r=>r.json())
   .then(data=>{
+
     loader.style.display="none";
 
     if(data.status!="OK"){
       mainPage.style.display="none";
       warningPage.style.display="block";
+
       let txt=document.getElementById("warningText");
 
-      if(data.pesan?.includes("3")){
-        txt.innerText="BELUM 3 JAM";
-      }else{
-        txt.innerText="BELUM 10 MENIT";
-      }
+      txt.innerText=data.pesan?.includes("3")?"BELUM 3 JAM":"BELUM 10 MENIT";
+
+      let s=5;
+      let cd=document.getElementById("warningCountdown");
+
+      let t=setInterval(()=>{
+        s--; cd.innerText=s;
+        if(s<=0){
+          clearInterval(t);
+          warningPage.style.display="none";
+          showDashboard();
+        }
+      },1000);
+
       return;
     }
 
@@ -268,31 +314,57 @@ btnAbsen.onclick=()=>{
   });
 };
 
-// ===== TAMBAHAN ROLE (TANPA GANGGU) =====
-(function(){
-  if(!UID) return;
+// CLOCK
+function startClock(){
+  function update(){
+    let now=new Date();
+    document.getElementById("dashTanggal").innerText=now.toLocaleDateString('id-ID',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
+    document.getElementById("dashWaktu").innerText=now.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});
+  }
+  update();
+  setInterval(update,1000);
+}
 
-  fetch(`${URL}?uid=${UID}&mode=check`)
+// DASHBOARD
+function showDashboard(){
+
+  // ✅ TAMBAHAN ROLE
+  const p = new URLSearchParams(location.search);
+  const page = p.get("page");
+
+  if(page==="admin"){
+    mainPage.innerHTML="<h2>DASHBOARD ADMIN</h2>";
+    mainPage.style.display="block";
+    return;
+  }
+
+  if(page==="direktur"){
+    mainPage.innerHTML="<h2>DASHBOARD DIREKTUR</h2>";
+    mainPage.style.display="block";
+    return;
+  }
+
+  if(page==="teknisi"){
+    mainPage.innerHTML="<h2>DASHBOARD TEKNISI</h2>";
+    mainPage.style.display="block";
+    return;
+  }
+
+  dashboardPage.style.display="block";
+
+  fetch(`${URL}?mode=dashboard&uid=${UID}`)
   .then(r=>r.json())
-  .then(data=>{
-    if(data.status!=="OK") return;
-
-    const role=data.role||"User";
-    if(role==="User") return;
-
-    document.body.innerHTML="";
-
-    if(role==="Admin"){
-      document.body.innerHTML="<h2>DASHBOARD ADMIN</h2>";
-    }else if(role==="Direktur"){
-      document.body.innerHTML="<h2>DASHBOARD DIREKTUR</h2>";
-    }else if(role==="Teknisi"){
-      document.body.innerHTML="<h2>DASHBOARD TEKNISI</h2>";
+  .then(d=>{
+    if(d.status=="OK"){
+      document.getElementById("dashNama").innerText=d.nama;
+      document.getElementById("dashHari").innerText=d.totalHari;
+      document.getElementById("dashJam").innerText=d.totalJam+" Jam";
     }
   });
-})();
+
+  startClock();
+}
 
 </script>
-
 </body>
 </html>
