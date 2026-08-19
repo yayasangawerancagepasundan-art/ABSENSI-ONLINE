@@ -1,128 +1,130 @@
 <!DOCTYPE html>
-<html lang="id">
+<html>
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ABSENSI NFC</title>
+  <title>Absensi Karyawan</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<style>
-body {
-  margin: 0;
-  font-family: Arial, sans-serif;
-  background: #0f172a;
-  color: white;
-  text-align: center;
-}
+  <style>
+    body {
+      font-family: Arial;
+      text-align: center;
+      padding: 20px;
+      background: #f5f5f5;
+    }
 
-.container {
-  padding: 20px;
-}
+    button {
+      padding: 15px;
+      font-size: 18px;
+      background: green;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      width: 100%;
+      margin-top: 10px;
+    }
 
-h1 {
-  font-size: 22px;
-  margin-bottom: 20px;
-}
+    input {
+      padding: 10px;
+      width: 100%;
+      margin-top: 10px;
+      font-size: 16px;
+    }
 
-.card {
-  background: #1e293b;
-  border-radius: 15px;
-  padding: 20px;
-  margin-top: 20px;
-}
-
-button {
-  background: #22c55e;
-  border: none;
-  padding: 15px;
-  width: 100%;
-  font-size: 18px;
-  border-radius: 10px;
-  color: white;
-  cursor: pointer;
-}
-
-button:active {
-  background: #16a34a;
-}
-
-#uid {
-  font-size: 14px;
-  color: #94a3b8;
-}
-
-#hasil {
-  margin-top: 10px;
-  text-align: left;
-  font-size: 14px;
-  white-space: pre-line;
-}
-</style>
-
+    .box {
+      margin-top: 20px;
+      padding: 15px;
+      background: white;
+      border-radius: 10px;
+    }
+  </style>
 </head>
 
 <body>
-<div class="container">
 
-  <h1>📲 ABSENSI NFC</h1>
+<h2>ABSENSI KARYAWAN</h2>
 
-  <div class="card">
-    <button onclick="scanNFC()">SCAN SEKARANG</button>
-    <p id="uid">UID: -</p>
-  </div>
+<button onclick="scanNFC()">SCAN NFC</button>
 
-  <div class="card">
-    <div id="hasil">Menunggu scan...</div>
-  </div>
+<input type="text" id="manualUID" placeholder="Masukkan UID manual (jika NFC gagal)">
 
+<button onclick="kirimManual()">KIRIM MANUAL</button>
+
+<div class="box">
+  <p id="status">Status: -</p>
+  <p id="nama">Nama: -</p>
+  <p id="gudang">Gudang: -</p>
 </div>
 
 <script>
-const url = "https://script.google.com/macros/s/AKfycbyrlWCsEXuAFpv0qdAw7JLclCjjooQ3MT3wg3LKgT0CxWEa9mBGOw_9QF83mrR3toY/exec";
 
-async function kirimUID(uid) {
-  try {
-    document.getElementById("hasil").innerText = "⏳ Mengirim ke server...";
+const URL = "https://script.google.com/macros/s/AKfycbxQYvZIxsv-KrVS2k3wKtmAtq3iOQuoz2PErPJP764YIvOiKv8lvx8IcFO44-tQc4A/exec";
 
-    const res = await fetch(url + "?uid=" + uid + "&mode=scan");
-    const data = await res.json();
-
-    document.getElementById("hasil").innerText =
-      "STATUS   : " + data.status + "\n" +
-      "NAMA     : " + (data.nama || "-") + "\n" +
-      "JABATAN  : " + (data.jabatan || "-") + "\n" +
-      "GUDANG   : " + (data.gudang || "-") + "\n" +
-      "INFO     : " + (data.message || "-");
-
-  } catch (err) {
-    document.getElementById("hasil").innerText = "❌ ERROR SERVER";
-    console.log(err);
-  }
-}
-
+// ================= NFC =================
 async function scanNFC() {
   try {
     const ndef = new NDEFReader();
     await ndef.scan();
 
-    document.getElementById("hasil").innerText = "📡 Tempelkan kartu NFC...";
+    document.getElementById("status").innerText = "Tempelkan kartu...";
 
-    ndef.onreading = event => {
+    ndef.onreading = (event) => {
       let uid = "";
 
       for (const record of event.message.records) {
         uid = new TextDecoder().decode(record.data);
       }
 
-      document.getElementById("uid").innerText = "UID: " + uid;
-
-      // kirim ke GAS
-      kirimUID(uid);
+      kirim(uid);
     };
 
   } catch (error) {
-    alert("❌ NFC tidak didukung / belum aktif di HP ini");
+    alert("HP tidak support NFC browser");
   }
 }
+
+// ================= MANUAL =================
+function kirimManual() {
+  let uid = document.getElementById("manualUID").value;
+  if (!uid) return alert("Isi UID dulu");
+  kirim(uid);
+}
+
+// ================= KIRIM KE SERVER =================
+function kirim(uid) {
+
+  document.getElementById("status").innerText = "Ambil lokasi...";
+
+  navigator.geolocation.getCurrentPosition(async function(pos) {
+
+    let lat = pos.coords.latitude;
+    let lng = pos.coords.longitude;
+
+    document.getElementById("status").innerText = "Kirim ke server...";
+
+    let res = await fetch(URL, {
+      method: "POST",
+      body: JSON.stringify({
+        uid: uid,
+        lat: lat,
+        lng: lng
+      })
+    });
+
+    let data = await res.json();
+
+    if (data.status == "SUCCESS") {
+      document.getElementById("status").innerText = data.message || "Berhasil";
+      document.getElementById("nama").innerText = "Nama: " + data.nama;
+      document.getElementById("gudang").innerText = "Gudang: " + data.gudang;
+    } else {
+      document.getElementById("status").innerText = data.message || "Tidak terdaftar";
+    }
+
+  }, function() {
+    alert("Gagal ambil lokasi");
+  });
+}
+
 </script>
 
 </body>
