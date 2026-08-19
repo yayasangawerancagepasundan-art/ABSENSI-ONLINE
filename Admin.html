@@ -2,244 +2,159 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ADMIN DATABASE</title>
 
 <style>
-body{
-  background:black;
-  color:white;
-  font-family:monospace;
-  text-align:center;
-}
+body{background:#000;color:#fff;font-family:monospace;margin:0;padding:10px;}
+.container{max-width:500px;margin:auto;}
 
-h2,h3{
-  margin-top:20px;
-}
+input{width:100%;padding:12px;margin:5px 0;border-radius:8px;border:none;}
 
-input,select,button{
-  width:80%;
-  padding:12px;
-  margin:6px;
-  border-radius:6px;
-  border:none;
-}
+.btn{display:flex;gap:5px;}
+button{flex:1;padding:12px;border:none;border-radius:8px;font-weight:bold;}
 
-button{
-  background:#00cc66;
-  color:black;
-  font-weight:bold;
-}
+.add{background:#0f0;}
+.update{background:#ff0;}
+.delete{background:#f00;color:#fff;}
 
-button:hover{
-  background:#00ff88;
-}
-
-table{
-  width:95%;
-  margin:20px auto;
-  border-collapse:collapse;
-  background:white;
-  color:black;
-}
-
-td,th{
-  border:1px solid #999;
-  padding:8px;
-}
-
-tr:hover{
-  background:#ddd;
-  cursor:pointer;
-}
-
-.box{
-  margin:10px;
-  padding:10px;
-  background:#111;
-  border-radius:10px;
-}
-
-canvas{
-  background:white;
-  margin-top:10px;
-  border-radius:10px;
-}
+table{width:100%;table-layout:fixed;border-collapse:collapse;}
+th,td{padding:8px;font-size:12px;word-break:break-word;}
+th{background:#111;}
+tr:nth-child(even){background:#1a1a1a;}
 </style>
 </head>
 
 <body>
 
-<h2>ADMIN DATABASE</h2>
+<div class="container">
 
-<div class="box">
+<h3>ADMIN</h3>
 
 <input id="uid" placeholder="UID">
 <input id="nama" placeholder="Nama">
 <input id="gudang" placeholder="Gudang">
 
-<select id="role">
-  <option>User</option>
-  <option>Admin</option>
-  <option>Direktur</option>
-  <option>Teknisi</option>
-</select>
-
-<button onclick="tambah()">TAMBAH</button>
-<button onclick="update()">UPDATE</button>
-<button onclick="hapus()">HAPUS</button>
-
+<div class="btn">
+<button class="add" onclick="tambah()">Tambah</button>
+<button class="update" onclick="update()">Update</button>
+<button class="delete" onclick="hapus()">Hapus</button>
 </div>
 
-<h3>DATA USER</h3>
+<input id="search" placeholder="Cari nama..." onkeyup="cari()">
 
-<table id="tbl">
+<div id="abjad"></div>
+
+<table>
+<thead>
 <tr>
-  <th>UID</th>
-  <th>Nama</th>
-  <th>Gudang</th>
-  <th>Role</th>
+<th>UID</th>
+<th>Nama</th>
+<th>Gudang</th>
+<th>Status</th>
 </tr>
+</thead>
+<tbody id="list"></tbody>
 </table>
 
-<h3>ANALYTICS</h3>
+<div>Hadir hari ini: <b id="total">0</b></div>
 
-<div class="box">
-  <div>Total Karyawan: <b><span id="totalOrang">0</span></b></div>
-  <div>Total Jam Kerja: <b><span id="totalJam">0</span></b></div>
 </div>
-
-<canvas id="chart" height="200"></canvas>
-
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <script>
 
-// ================= CONFIG =================
 const URL="https://script.google.com/macros/s/AKfycbxwlXN-GC8cavD_8z4k6x-m6-cItZVP2F8P8jkgEuU5N0L3oO3ToZLt0VAaL8xiGhg/exec";
 
-// ================= HELPER =================
-function kirim(data){
-  return fetch(URL,{
-    method:"POST",
-    body:JSON.stringify(data)
-  }).then(r=>r.json());
+let allData=[];
+
+function load(){
+ fetch(URL+"?mode=getUsers")
+ .then(r=>r.json())
+ .then(d=>{
+  allData=d.data;
+  render(allData);
+  buatAbjad();
+ });
 }
 
-// ================= CRUD =================
+function render(data){
+ let html="";
+ let hadir=0;
+
+ data.forEach(d=>{
+  html+=`
+  <tr onclick="pilih('${d.uid}','${d.nama}','${d.gudang}')">
+  <td>${d.uid}</td>
+  <td>${d.nama}</td>
+  <td>${d.gudang}</td>
+  <td id="s_${d.uid}">...</td>
+  </tr>`;
+  cek(d.uid);
+ });
+
+ list.innerHTML=html;
+}
+
+function cek(uid){
+ fetch(URL+`?mode=cek&uid=${uid}`)
+ .then(r=>r.json())
+ .then(d=>{
+  let el=document.getElementById("s_"+uid);
+  if(d.status=="HADIR"){
+    el.innerText="✔";
+    hitung();
+  }else{
+    el.innerText="-";
+  }
+ });
+}
+
+function hitung(){
+ let total=document.querySelectorAll("td:contains('✔')");
+ document.getElementById("total").innerText=total.length;
+}
+
+function pilih(u,n,g){
+ uid.value=u;
+ nama.value=n;
+ gudang.value=g;
+}
+
 function tambah(){
-  kirim({
-    mode:"add",
-    uid:uid.value,
-    nama:nama.value,
-    gudang:gudang.value,
-    role:role.value
-  }).then(()=>{
-    alert("DATA DITAMBAH");
-    load();
-  });
+ fetch(URL+`?mode=add&uid=${uid.value}&nama=${nama.value}&gudang=${gudang.value}`)
+ .then(()=>load());
 }
 
 function update(){
-  kirim({
-    mode:"update",
-    uid:uid.value,
-    nama:nama.value,
-    gudang:gudang.value,
-    role:role.value
-  }).then(()=>{
-    alert("DATA DIUPDATE");
-    load();
-  });
+ fetch(URL+`?mode=update&uid=${uid.value}&nama=${nama.value}&gudang=${gudang.value}`)
+ .then(()=>load());
 }
 
 function hapus(){
-  if(!confirm("Yakin hapus data?")) return;
-
-  kirim({
-    mode:"delete",
-    uid:uid.value
-  }).then(()=>{
-    alert("DATA DIHAPUS");
-    load();
-  });
+ fetch(URL+`?mode=delete&uid=${uid.value}`)
+ .then(()=>load());
 }
 
-// ================= LOAD TABLE =================
-function load(){
-  kirim({mode:"get"}).then(res=>{
-
-    const tbl=document.getElementById("tbl");
-
-    tbl.innerHTML = `
-    <tr>
-      <th>UID</th>
-      <th>Nama</th>
-      <th>Gudang</th>
-      <th>Role</th>
-    </tr>`;
-
-    res.data.forEach(d=>{
-
-      let row=tbl.insertRow();
-
-      row.innerHTML = `
-        <td>${d[0]}</td>
-        <td>${d[1]}</td>
-        <td>${d[3]}</td>
-        <td>${d[4]}</td>
-      `;
-
-      // klik untuk edit
-      row.onclick=()=>{
-        uid.value=d[0];
-        nama.value=d[1];
-        gudang.value=d[3];
-        role.value=d[4];
-      }
-
-    });
-
-  });
+function cari(){
+ let q=search.value.toLowerCase();
+ let hasil=allData.filter(d=>d.nama.toLowerCase().includes(q));
+ render(hasil);
 }
 
-// ================= ANALYTICS =================
-function loadAnalytics(){
-
-  fetch(URL+"?mode=analytics")
-  .then(r=>r.json())
-  .then(d=>{
-
-    document.getElementById("totalOrang").innerText = d.totalOrang;
-    document.getElementById("totalJam").innerText = d.totalJam;
-
-    let labels = Object.keys(d.perHari);
-    let values = Object.values(d.perHari);
-
-    // hapus chart lama biar tidak numpuk
-    if(window.chart) window.chart.destroy();
-
-    window.chart = new Chart(document.getElementById("chart"),{
-      type:"line",
-      data:{
-        labels:labels,
-        datasets:[{
-          label:"Absensi Harian",
-          data:values,
-          fill:false
-        }]
-      },
-      options:{
-        responsive:true
-      }
-    });
-
-  });
-
+function buatAbjad(){
+ let html="";
+ for(let i=65;i<=90;i++){
+  let h=String.fromCharCode(i);
+  html+=`<span onclick="filter('${h}')">${h}</span> `;
+ }
+ html+=`<span onclick="render(allData)">ALL</span>`;
+ abjad.innerHTML=html;
 }
 
-// ================= INIT =================
+function filter(h){
+ let hasil=allData.filter(d=>d.nama.toUpperCase().startsWith(h));
+ render(hasil);
+}
+
 load();
-loadAnalytics();
 
 </script>
 
