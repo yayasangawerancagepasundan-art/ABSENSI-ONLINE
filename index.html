@@ -16,11 +16,10 @@
       background: white;
       padding: 20px;
       border-radius: 15px;
-      box-shadow: 0 5px 15px rgba(0,0,0,0.1);
     }
 
     .status {
-      font-size: 22px;
+      font-size: 20px;
       font-weight: bold;
       margin-bottom: 10px;
     }
@@ -43,6 +42,17 @@
       100% { transform: rotate(360deg); }
     }
 
+    button {
+      padding: 15px;
+      font-size: 18px;
+      background: green;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      width: 100%;
+      margin-top: 20px;
+    }
+
     .row {
       display: flex;
       justify-content: space-between;
@@ -51,7 +61,6 @@
 
     .label { font-weight: bold; width: 40%; text-align:left; }
     .value { width: 60%; text-align:left; }
-
   </style>
 </head>
 
@@ -61,104 +70,103 @@
 
 <div class="card">
 
-  <div id="status" class="status red">Mencari lokasi...</div>
+  <!-- STATE 1 -->
+  <div id="loading">
+    <div class="status red">Mencari lokasi...</div>
+    <div class="loader"></div>
+    <p>Jarak: <span id="jarak">-</span></p>
+  </div>
 
-  <div class="loader" id="loader"></div>
+  <!-- STATE 2 -->
+  <div id="ready" style="display:none;">
+    <div class="status green">Dalam Area</div>
+    <p>Jarak: <span id="jarak2">-</span></p>
+    <button onclick="absen()">ABSEN</button>
+  </div>
 
-  <div class="row"><div class="label">Nama</div><div id="nama" class="value">-</div></div>
-  <div class="row"><div class="label">Tanggal</div><div id="tgl" class="value">-</div></div>
-  <div class="row"><div class="label">Jam</div><div id="jam" class="value">-</div></div>
-  <div class="row"><div class="label">Gudang</div><div id="gudang" class="value">-</div></div>
-  <div class="row"><div class="label">Jarak</div><div id="jarak" class="value">-</div></div>
+  <!-- STATE 3 -->
+  <div id="result" style="display:none;">
+    <div id="statusResult" class="status"></div>
+
+    <div class="row"><div class="label">Nama</div><div id="nama" class="value">-</div></div>
+    <div class="row"><div class="label">Tanggal</div><div id="tgl" class="value">-</div></div>
+    <div class="row"><div class="label">Jam</div><div id="jam" class="value">-</div></div>
+    <div class="row"><div class="label">Gudang</div><div id="gudang" class="value">-</div></div>
+  </div>
 
 </div>
 
 <script>
 
-// ===== API BARU =====
 const API = "https://script.google.com/macros/s/AKfycbxwlXN-GC8cavD_8z4k6x-m6-cItZVP2F8P8jkgEuU5N0L3oO3ToZLt0VAaL8xiGhg/exec";
 
-// ===== AMBIL UID =====
 const params = new URLSearchParams(window.location.search);
 const uid = params.get("uid");
 
-if(!uid){
-  document.getElementById("status").innerText = "UID tidak ditemukan";
-}
+let currentLat = "";
+let currentLng = "";
+let sudahReady = false;
 
-// ===== HITUNG JARAK =====
-function hitungJarak(lat1, lon1, lat2, lon2){
-  const R = 6371000;
-  const dLat = (lat2-lat1) * Math.PI/180;
-  const dLon = (lon2-lon1) * Math.PI/180;
-
-  const a =
-    Math.sin(dLat/2)*Math.sin(dLat/2) +
-    Math.cos(lat1*Math.PI/180) *
-    Math.cos(lat2*Math.PI/180) *
-    Math.sin(dLon/2)*Math.sin(dLon/2);
-
-  const c = 2*Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-
-  return R*c;
-}
-
-// ===== TRACKING GPS REALTIME =====
-let sudahKirim = false;
-
+// ===== TRACK GPS =====
 navigator.geolocation.watchPosition(async pos => {
 
-  const lat = pos.coords.latitude;
-  const lng = pos.coords.longitude;
+  currentLat = pos.coords.latitude;
+  currentLng = pos.coords.longitude;
 
-  document.getElementById("status").innerText = "Menghitung jarak...";
+  let res = await fetch(API + "?uid=" + uid + "&lat=" + currentLat + "&lng=" + currentLng);
+  let data = await res.json();
 
-  try{
-
-    let res = await fetch(API + "?uid=" + uid + "&lat=" + lat + "&lng=" + lng);
-    let data = await res.json();
-
-    // ===== LUAR AREA =====
-    if(data.status == "OUTSIDE"){
-      document.getElementById("status").innerText = "Diluar Area";
-      document.getElementById("status").className = "status red";
-      document.getElementById("jarak").innerText = data.jarak + " m";
-      return;
-    }
-
-    // ===== DALAM AREA =====
-    if(data.status == "OK" && !sudahKirim){
-
-      sudahKirim = true;
-
-      document.getElementById("loader").style.display = "none";
-
-      document.getElementById("status").innerText = "ABSEN " + data.aksi;
-      document.getElementById("status").className = "status green";
-
-      document.getElementById("nama").innerText = data.nama;
-      document.getElementById("gudang").innerText = data.gudang;
-
-      const now = new Date();
-      document.getElementById("tgl").innerText = now.toLocaleDateString("id-ID");
-      document.getElementById("jam").innerText = now.toLocaleTimeString("id-ID");
-
-      // auto close / reset
-      setTimeout(()=>{
-        window.location.href = window.location.pathname;
-      },10000);
-
-    }
-
-  }catch(e){
-    document.getElementById("status").innerText = "Gagal koneksi";
+  // LUAR AREA
+  if(data.status == "OUTSIDE"){
+    document.getElementById("jarak").innerText = data.jarak + " m";
+    return;
   }
 
-},{
-  enableHighAccuracy:true,
-  maximumAge:0,
-  timeout:10000
+  // MASUK AREA
+  if(data.status == "OK" && !sudahReady){
+
+    sudahReady = true;
+
+    document.getElementById("loading").style.display = "none";
+    document.getElementById("ready").style.display = "block";
+
+    document.getElementById("jarak2").innerText = "0 - OK";
+  }
+
 });
+
+// ===== KLIK ABSEN =====
+async function absen(){
+
+  document.getElementById("ready").style.display = "none";
+  document.getElementById("loading").style.display = "block";
+
+  let res = await fetch(API + "?uid=" + uid + "&lat=" + currentLat + "&lng=" + currentLng);
+  let data = await res.json();
+
+  document.getElementById("loading").style.display = "none";
+  document.getElementById("result").style.display = "block";
+
+  if(data.status == "OK"){
+
+    document.getElementById("statusResult").innerText = "ABSEN " + data.aksi;
+    document.getElementById("statusResult").className = "status green";
+
+    document.getElementById("nama").innerText = data.nama;
+    document.getElementById("gudang").innerText = data.gudang;
+
+    const now = new Date();
+    document.getElementById("tgl").innerText = now.toLocaleDateString("id-ID");
+    document.getElementById("jam").innerText = now.toLocaleTimeString("id-ID");
+
+  } else {
+    document.getElementById("statusResult").innerText = "Gagal";
+  }
+
+  setTimeout(()=>{
+    window.location.href = window.location.pathname;
+  },10000);
+}
 
 </script>
 
