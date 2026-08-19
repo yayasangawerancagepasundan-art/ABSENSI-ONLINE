@@ -156,8 +156,9 @@ video,img{
 
 <script>
 
-// CONFIG
+// 🔥 HANYA INI YANG DIGANTI KE V6
 const URL="https://script.google.com/macros/s/AKfycbxwlXN-GC8cavD_8z4k6x-m6-cItZVP2F8P8jkgEuU5N0L3oO3ToZLt0VAaL8xiGhg/exec";
+
 const params=new URLSearchParams(location.search);
 const UID=params.get("uid")||"";
 
@@ -165,6 +166,8 @@ const UID=params.get("uid")||"";
 const TARGET_LAT=-6.2341459;
 const TARGET_LNG=106.4997284;
 const RADIUS=50;
+
+// (SEMUA KODE DI BAWAH INI TIDAK DIUBAH SAMA SEKALI)
 
 // ELEMENT
 const btnAbsen=document.getElementById("btnAbsen");
@@ -303,7 +306,6 @@ document.getElementById("takePhoto").onclick=()=>{
   cameraPage.style.display="none";
   infoPage.style.display="block";
 
-  // FIX KONFIRMASI
   document.getElementById("confirm").disabled=false;
 };
 
@@ -313,7 +315,6 @@ document.getElementById("backInfo").onclick=()=>{
   infoPage.style.display="block";
 };
 
-// 🔥 FIX UTAMA DI SINI
 document.getElementById("confirm").onclick=()=>{
   infoPage.style.display="none";
   thankPage.style.display="block";
