@@ -12,13 +12,11 @@ body {
   text-align:center;
 }
 
-/* ICON */
 .location-icon {
   font-size:80px;
   margin:20px 0;
 }
 
-/* PROGRESS */
 .progress-container {
   width:80%;
   height:20px;
@@ -102,12 +100,12 @@ video,img {
 <div id="thankPage">
 <h2>TERIMAKASIH</h2>
 <p>Absensi berhasil</p>
-<p>Menutup dalam 10 detik...</p>
+<p>Menutup dalam <span id="countdown">10</span> detik...</p>
 </div>
 
 <script>
 
-// ===== ELEMENT BINDING (FIX UTAMA) =====
+// ===== ELEMENT =====
 const btnAbsen = document.getElementById("btnAbsen");
 const confirmBtn = document.getElementById("confirm");
 const takePhoto = document.getElementById("takePhoto");
@@ -228,15 +226,32 @@ retake.onclick=()=>{
   confirmBtn.disabled=true;
 };
 
-// ===== KONFIRMASI (FIX UTAMA) =====
+// ===== KONFIRMASI + COUNTDOWN =====
 confirmBtn.onclick = () => {
 
   infoPage.style.display="none";
   thankPage.style.display="block";
 
-  setTimeout(()=>{
-    window.close();
-  },10000);
+  let sisa = 10;
+  const countdownEl = document.getElementById("countdown");
+
+  countdownEl.innerText = sisa;
+
+  const timer = setInterval(()=>{
+    sisa--;
+    countdownEl.innerText = sisa;
+
+    // opsional: merah di akhir
+    if(sisa <= 3){
+      countdownEl.style.color = "red";
+    }
+
+    if(sisa <= 0){
+      clearInterval(timer);
+      window.close();
+    }
+
+  },1000);
 };
 
 </script>
