@@ -57,10 +57,9 @@
       background: green;
     }
 
-    /* ===== TAMBAHAN RESULT ===== */
+    /* ===== RESULT STYLE ===== */
     .row {
       display: flex;
-      justify-content: space-between;
       margin: 6px 0;
     }
 
@@ -70,10 +69,16 @@
       font-weight: bold;
     }
 
+    .titik {
+      width: 10%;
+      text-align: center;
+    }
+
     .value {
-      width: 60%;
+      width: 50%;
       text-align: left;
     }
+
   </style>
 </head>
 
@@ -97,15 +102,39 @@
     <button id="btnAbsen" disabled>ABSEN</button>
   </div>
 
-  <!-- STATE 3 (BARU) -->
+  <!-- STATE 3 -->
   <div id="result" style="display:none;">
     <div id="statusResult" class="status green"></div>
 
-    <div class="row"><div class="label">Nama</div><div id="nama" class="value">-</div></div>
-    <div class="row"><div class="label">Jam</div><div id="jam" class="value">-</div></div>
-    <div class="row"><div class="label">Tanggal</div><div id="tanggal" class="value">-</div></div>
-    <div class="row"><div class="label">GPS</div><div id="gps" class="value">-</div></div>
-    <div class="row"><div class="label">Gudang</div><div id="gudang" class="value">-</div></div>
+    <div class="row">
+      <div class="label">Nama</div>
+      <div class="titik">:</div>
+      <div class="value" id="nama">-</div>
+    </div>
+
+    <div class="row">
+      <div class="label">Jam</div>
+      <div class="titik">:</div>
+      <div class="value" id="jam">-</div>
+    </div>
+
+    <div class="row">
+      <div class="label">Tanggal</div>
+      <div class="titik">:</div>
+      <div class="value" id="tanggal">-</div>
+    </div>
+
+    <div class="row">
+      <div class="label">GPS</div>
+      <div class="titik">:</div>
+      <div class="value" id="gps">-</div>
+    </div>
+
+    <div class="row">
+      <div class="label">Gudang</div>
+      <div class="titik">:</div>
+      <div class="value" id="gudang">-</div>
+    </div>
 
   </div>
 
@@ -170,6 +199,10 @@ navigator.geolocation.watchPosition(pos => {
     btn.classList.add("active");
   }
 
+},{
+  enableHighAccuracy: true,
+  maximumAge: 0,
+  timeout: 10000
 });
 
 // ===== KLIK ABSEN =====
@@ -181,7 +214,6 @@ document.getElementById("btnAbsen").onclick = async function(){
   let res = await fetch(API + "?uid=" + uid + "&lat=" + currentLat + "&lng=" + currentLng);
   let data = await res.json();
 
-  // pindah ke RESULT
   document.getElementById("ready").style.display = "none";
   document.getElementById("result").style.display = "block";
 
@@ -204,7 +236,6 @@ document.getElementById("btnAbsen").onclick = async function(){
   }
 
 };
-
 </script>
 
 </body>
