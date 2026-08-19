@@ -29,7 +29,13 @@ body{
 button{
   width:90%;
   padding:10px;
-  margin:10px;
+  margin:5px;
+}
+
+input,select{
+  width:90%;
+  padding:8px;
+  margin:5px;
 }
 
 #list{
@@ -42,14 +48,36 @@ button{
 
 <h2>DASHBOARD ADMIN</h2>
 
+<!-- SUMMARY -->
 <div class="box">
   <div class="row"><div>Total User</div><div id="totalUser">-</div></div>
-  <div class="row"><div>Total Absen Hari Ini</div><div id="totalAbsen">-</div></div>
+  <div class="row"><div>Total Absen</div><div id="totalAbsen">-</div></div>
 </div>
 
+<!-- LIST -->
 <div class="box">
-  <h3>DATA ABSENSI HARI INI</h3>
+  <h3>DATA USER</h3>
   <div id="list">Loading...</div>
+</div>
+
+<!-- FORM -->
+<div class="box">
+<h3>FORM USER</h3>
+
+<input type="hidden" id="id">
+<input type="text" id="nama" placeholder="Nama">
+<input type="text" id="uid" placeholder="UID RFID">
+
+<select id="role">
+  <option>User</option>
+  <option>Admin</option>
+  <option>Direktur</option>
+  <option>Teknisi</option>
+</select>
+
+<button onclick="saveData()">SAVE</button>
+<button onclick="clearForm()">CANCEL</button>
+
 </div>
 
 <button onclick="loadData()">REFRESH</button>
@@ -57,10 +85,6 @@ button{
 <script>
 
 const URL="https://script.google.com/macros/s/AKfycbxwlXN-GC8cavD_8z4k6x-m6-cItZVP2F8P8jkgEuU5N0L3oO3ToZLt0VAaL8xiGhg/exec";
-
-// ambil UID kalau mau dipakai nanti
-const params=new URLSearchParams(location.search);
-const UID=params.get("uid")||"";
 
 // LOAD DATA
 function loadData(){
@@ -85,8 +109,11 @@ function loadData(){
       html+=`
       <div class="box">
         <div><b>${d.nama}</b></div>
-        <div>${d.waktu}</div>
-        <div>${d.status}</div>
+        <div>UID: ${d.uid}</div>
+        <div>Role: ${d.role}</div>
+
+        <button onclick="editData('${d.id}','${d.nama}','${d.uid}','${d.role}')">EDIT</button>
+        <button onclick="hapusData('${d.id}')">HAPUS</button>
       </div>
       `;
     });
@@ -94,6 +121,54 @@ function loadData(){
     document.getElementById("list").innerHTML=html || "Tidak ada data";
   });
 
+}
+
+// SAVE
+function saveData(){
+
+  let id = document.getElementById("id").value;
+  let nama = document.getElementById("nama").value;
+  let uid = document.getElementById("uid").value;
+  let role = document.getElementById("role").value;
+
+  fetch(`${URL}?mode=save&id=${id}&nama=${nama}&uid=${uid}&role=${role}`)
+  .then(r=>r.json())
+  .then(res=>{
+    alert(res.pesan);
+    clearForm();
+    loadData();
+  });
+
+}
+
+// EDIT
+function editData(id,nama,uid,role){
+  document.getElementById("id").value=id;
+  document.getElementById("nama").value=nama;
+  document.getElementById("uid").value=uid;
+  document.getElementById("role").value=role;
+}
+
+// DELETE
+function hapusData(id){
+
+  if(!confirm("Hapus data?")) return;
+
+  fetch(`${URL}?mode=delete&id=${id}`)
+  .then(r=>r.json())
+  .then(res=>{
+    alert(res.pesan);
+    loadData();
+  });
+
+}
+
+// CLEAR
+function clearForm(){
+  document.getElementById("id").value="";
+  document.getElementById("nama").value="";
+  document.getElementById("uid").value="";
+  document.getElementById("role").value="User";
 }
 
 // AUTO LOAD
