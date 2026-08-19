@@ -1,67 +1,127 @@
 <!DOCTYPE html>
-<html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ABSENSI NFC</title>
+
+<style>
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #0f172a;
+  color: white;
+  text-align: center;
+}
+
+.container {
+  padding: 20px;
+}
+
+h1 {
+  font-size: 22px;
+  margin-bottom: 20px;
+}
+
+.card {
+  background: #1e293b;
+  border-radius: 15px;
+  padding: 20px;
+  margin-top: 20px;
+}
+
+button {
+  background: #22c55e;
+  border: none;
+  padding: 15px;
+  width: 100%;
+  font-size: 18px;
+  border-radius: 10px;
+  color: white;
+  cursor: pointer;
+}
+
+button:active {
+  background: #16a34a;
+}
+
+#uid {
+  font-size: 14px;
+  color: #94a3b8;
+}
+
+#hasil {
+  margin-top: 10px;
+  text-align: left;
+  font-size: 14px;
+  white-space: pre-line;
+}
+</style>
+
+</head>
+
 <body>
+<div class="container">
 
-<h2>SCAN NFC</h2>
+  <h1>📲 ABSENSI NFC</h1>
 
-<button onclick="startScan()">SCAN SEKARANG</button>
+  <div class="card">
+    <button onclick="scanNFC()">SCAN SEKARANG</button>
+    <p id="uid">UID: -</p>
+  </div>
 
-<pre id="hasil">Belum scan...</pre>
+  <div class="card">
+    <div id="hasil">Menunggu scan...</div>
+  </div>
+
+</div>
 
 <script>
-let ndef;
+const url = "https://script.google.com/macros/s/AKfycbyrlWCsEXuAFpv0qdAw7JLclCjjooQ3MT3wg3LKgT0CxWEa9mBGOw_9QF83mrR3toY/exec";
 
-async function startScan(){
-  try{
+async function kirimUID(uid) {
+  try {
+    document.getElementById("hasil").innerText = "⏳ Mengirim ke server...";
 
-    // pastikan support
-    if (!('NDEFReader' in window)) {
-      document.getElementById("hasil").innerText = "❌ HP tidak support NFC Web";
-      return;
-    }
+    const res = await fetch(url + "?uid=" + uid + "&mode=scan");
+    const data = await res.json();
 
-    ndef = new NDEFReader();
-
-    document.getElementById("hasil").innerText = "📡 Mendekatkan kartu...";
-
-    await ndef.scan();
-
-    // event saat kartu ditempel
-    ndef.onreading = event => {
-
-      let uid = event.serialNumber;
-
-      if(!uid){
-        document.getElementById("hasil").innerText = "❌ UID tidak tersedia (HP tidak kasih UID)";
-        return;
-      }
-
-      document.getElementById("hasil").innerText =
-        "✅ UID: " + uid;
-
-      kirim(uid);
-    };
-
-  }catch(error){
     document.getElementById("hasil").innerText =
-      "❌ ERROR: " + error;
+      "STATUS   : " + data.status + "\n" +
+      "NAMA     : " + (data.nama || "-") + "\n" +
+      "JABATAN  : " + (data.jabatan || "-") + "\n" +
+      "GUDANG   : " + (data.gudang || "-") + "\n" +
+      "INFO     : " + (data.message || "-");
+
+  } catch (err) {
+    document.getElementById("hasil").innerText = "❌ ERROR SERVER";
+    console.log(err);
   }
 }
 
+async function scanNFC() {
+  try {
+    const ndef = new NDEFReader();
+    await ndef.scan();
 
-// kirim ke Apps Script
-function kirim(uid){
+    document.getElementById("hasil").innerText = "📡 Tempelkan kartu NFC...";
 
-  let url = "https://script.google.com/macros/s/AKfycbyrlWCsEXuAFpv0qdAw7JLclCjjooQ3MT3wg3LKgT0CxWEa9mBGOw_9QF83mrR3toY/exec?uid=" + encodeURIComponent(uid);
+    ndef.onreading = event => {
+      let uid = "";
 
-  fetch(url)
-  .then(res => res.json())
-  .then(data => {
+      for (const record of event.message.records) {
+        uid = new TextDecoder().decode(record.data);
+      }
 
-    document.getElementById("hasil").innerText +=
-      "\n\n📦 SERVER:\n" + JSON.stringify(data, null, 2);
+      document.getElementById("uid").innerText = "UID: " + uid;
 
-  });
+      // kirim ke GAS
+      kirimUID(uid);
+    };
+
+  } catch (error) {
+    alert("❌ NFC tidak didukung / belum aktif di HP ini");
+  }
 }
 </script>
 
