@@ -12,24 +12,43 @@ body {
   text-align:center;
 }
 
+/* ===== RADAR ===== */
 .radar {
-  width:260px;height:260px;
-  margin:20px auto;
+  position: relative;
+  width: 260px;
+  height: 260px;
+  margin: 20px auto;
+  border-radius: 50%;
+  background: radial-gradient(circle, #001a00 10%, #000 70%);
+  overflow: hidden;
+}
+
+.ring {
+  position:absolute;
+  border:1px solid rgba(0,255,100,0.3);
   border-radius:50%;
-  background:radial-gradient(circle,#001a00,#000);
-  position:relative;
-  overflow:hidden;
+  animation:pulse 2s infinite;
+}
+.ring:nth-child(1){width:100%;height:100%;}
+.ring:nth-child(2){width:70%;height:70%;top:15%;left:15%;}
+.ring:nth-child(3){width:40%;height:40%;top:30%;left:30%;}
+
+@keyframes pulse {
+  0%{opacity:0.2;}
+  50%{opacity:1;}
+  100%{opacity:0.2;}
 }
 
 .sweep {
-  width:100%;height:100%;
   position:absolute;
-  background:conic-gradient(rgba(0,255,100,0.4),transparent);
+  width:100%;
+  height:100%;
+  background:conic-gradient(rgba(0,255,100,0.4),transparent 60%);
   animation:spin 2s linear infinite;
 }
-
 @keyframes spin {100%{transform:rotate(360deg);}}
 
+/* target */
 .target {
   width:10px;height:10px;
   background:red;border-radius:50%;
@@ -45,15 +64,28 @@ body {
   display:none;
 }
 
+/* tombol */
 button {
   margin-top:10px;
   padding:10px;
   width:80%;
 }
 
-#infoPage,#thankPage {display:none;background:white;color:black;margin:10px;padding:10px;border-radius:10px;}
+/* halaman */
+#infoPage,#thankPage {
+  display:none;
+  background:white;
+  color:black;
+  margin:10px;
+  padding:10px;
+  border-radius:10px;
+}
 
-video,img {width:100%;max-width:300px;border-radius:10px;}
+video,img {
+  width:100%;
+  max-width:300px;
+  border-radius:10px;
+}
 
 </style>
 </head>
@@ -64,28 +96,32 @@ video,img {width:100%;max-width:300px;border-radius:10px;}
 
 <!-- MAIN -->
 <div id="mainPage">
-<div class="radar">
-  <div class="sweep"></div>
-  <div class="target" id="target"></div>
-  <div class="crosshair" id="crosshair"></div>
+  <div class="radar">
+    <div class="sweep"></div>
+    <div class="ring"></div>
+    <div class="ring"></div>
+    <div class="ring"></div>
+
+    <div class="target" id="target"></div>
+    <div class="crosshair" id="crosshair"></div>
+  </div>
+
+  <div id="status">MENCARI TARGET...</div>
+  <div>Jarak: <span id="jarak">-</span></div>
+  <div>Akurasi: <span id="akurasi">-</span></div>
+
+  <button id="btnAbsen" disabled>ABSEN</button>
 </div>
 
-<div id="status">MENCARI TARGET...</div>
-<div>Jarak: <span id="jarak">-</span></div>
-<div>Akurasi: <span id="akurasi">-</span></div>
-
-<button id="btnAbsen" disabled>ABSEN</button>
-</div>
-
-<!-- INFO + FOTO -->
+<!-- INFO -->
 <div id="infoPage">
 
 <h3>INFORMASI</h3>
-<div>Nama : <span id="nama"></span></div>
-<div>Tanggal : <span id="tanggal"></span></div>
-<div>Waktu : <span id="waktu"></span></div>
-<div>Lokasi : <span id="lokasi"></span></div>
-<div>Status : <span id="statusAbsensi"></span></div>
+<div>Nama : <span id="nama">-</span></div>
+<div>Tanggal : <span id="tanggal">-</span></div>
+<div>Waktu : <span id="waktu">-</span></div>
+<div>Lokasi : <span id="lokasi">-</span></div>
+<div>Status : <span id="statusAbsensi">SIAP ABSEN</span></div>
 
 <hr>
 
@@ -104,117 +140,116 @@ video,img {width:100%;max-width:300px;border-radius:10px;}
 <!-- THANK YOU -->
 <div id="thankPage">
 <h2>TERIMAKASIH</h2>
-<p>Data berhasil dikirim</p>
-<p>Halaman akan tertutup...</p>
+<p>Data berhasil dicatat</p>
+<p>Menutup dalam 10 detik...</p>
 </div>
 
 <script>
 
-const URL="https://script.google.com/macros/s/AKfycbxwlXN-GC8cavD_8z4k6x-m6-cItZVP2F8P8jkgEuU5N0L3oO3ToZLt0VAaL8xiGhg/exec";
+// ===== CONFIG =====
+const URL = "https://script.google.com/macros/s/AKfycbxwlXN-GC8cavD_8z4k6x-m6-cItZVP2F8P8jkgEuU5N0L3oO3ToZLt0VAaL8xiGhg/exec";
 
-const TARGET_LAT=-6.2341459;
-const TARGET_LNG=106.4997284;
-const RADIUS=50;
+const params = new URLSearchParams(window.location.search);
+const UID = params.get("uid") || "";
+
+// TARGET
+const TARGET_LAT = -6.2341459;
+const TARGET_LNG = 106.4997284;
+const RADIUS = 50;
 
 let lat=0,lng=0,locked=false,photo="";
 
-// ===== DISTANCE
+// ===== DISTANCE =====
 function dist(a,b,c,d){
-const R=6371000;
-let dLat=(c-a)*Math.PI/180;
-let dLon=(d-b)*Math.PI/180;
-let x=Math.sin(dLat/2)**2+
-Math.cos(a*Math.PI/180)*Math.cos(c*Math.PI/180)*
-Math.sin(dLon/2)**2;
-return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));
+  const R=6371000;
+  let dLat=(c-a)*Math.PI/180;
+  let dLon=(d-b)*Math.PI/180;
+  let x=Math.sin(dLat/2)**2+
+  Math.cos(a*Math.PI/180)*Math.cos(c*Math.PI/180)*
+  Math.sin(dLon/2)**2;
+  return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));
 }
 
-// ===== GPS
+// ===== GPS =====
 navigator.geolocation.watchPosition(p=>{
-lat=p.coords.latitude;
-lng=p.coords.longitude;
+  lat=p.coords.latitude;
+  lng=p.coords.longitude;
 
-let d=dist(lat,lng,TARGET_LAT,TARGET_LNG);
+  let d=dist(lat,lng,TARGET_LAT,TARGET_LNG);
 
-jarak.innerText=Math.round(d)+" m";
-akurasi.innerText="± "+Math.round(p.coords.accuracy)+" m";
+  jarak.innerText=Math.round(d)+" m";
+  akurasi.innerText="± "+Math.round(p.coords.accuracy)+" m";
 
-if(d<=RADIUS){
-locked=true;
-status.innerText="TARGET LOCK";
-crosshair.style.display="block";
-btnAbsen.disabled=false;
-}
+  if(d<=RADIUS){
+    locked=true;
+    status.innerText="TARGET LOCK";
+    crosshair.style.display="block";
+    btnAbsen.disabled=false;
+  }
 });
 
-// ===== STEP 1: ABSEN
+// ===== ABSEN (TANPA SERVER) =====
 btnAbsen.onclick=()=>{
+  if(!locked) return alert("Belum dalam radius");
 
-if(!locked)return alert("Belum radius");
+  mainPage.style.display="none";
+  infoPage.style.display="block";
 
-fetch(`${URL}?lat=${lat}&lng=${lng}`)
-.then(r=>r.json())
-.then(data=>{
+  // isi waktu lokal
+  let now = new Date();
+  tanggal.innerText = now.toLocaleDateString();
+  waktu.innerText = now.toLocaleTimeString();
+};
 
-mainPage.style.display="none";
-infoPage.style.display="block";
-
-nama.innerText=data.nama||"-";
-tanggal.innerText=data.tanggal||"-";
-waktu.innerText=data.waktu||"-";
-lokasi.innerText=data.lokasi||"-";
-statusAbsensi.innerText=data.status||"-";
+// ===== CAMERA =====
+function startCamera(){
+  navigator.mediaDevices.getUserMedia({video:true})
+  .then(s=>video.srcObject=s);
+}
 
 startCamera();
 
-});
-
-};
-
-// ===== CAMERA
-function startCamera(){
-navigator.mediaDevices.getUserMedia({video:true})
-.then(s=>video.srcObject=s);
-}
-
-// ambil foto
 takePhoto.onclick=()=>{
-canvas.width=video.videoWidth;
-canvas.height=video.videoHeight;
-canvas.getContext("2d").drawImage(video,0,0);
+  canvas.width=video.videoWidth;
+  canvas.height=video.videoHeight;
+  canvas.getContext("2d").drawImage(video,0,0);
 
-photo=canvas.toDataURL("image/jpeg");
+  photo = canvas.toDataURL("image/jpeg");
 
-preview.src=photo;
-preview.style.display="block";
-video.style.display="none";
+  preview.src = photo;
+  preview.style.display="block";
+  video.style.display="none";
 
-confirm.disabled=false;
-retake.style.display="inline-block";
+  confirm.disabled=false;
+  retake.style.display="inline-block";
 };
 
-// ulang
 retake.onclick=()=>{
-preview.style.display="none";
-video.style.display="block";
-confirm.disabled=true;
+  preview.style.display="none";
+  video.style.display="block";
+  confirm.disabled=true;
 };
 
-// ===== STEP FINAL: KIRIM
+// ===== KONFIRMASI (BARU HIT SERVER) =====
 confirm.onclick=()=>{
 
-fetch(`${URL}?lat=${lat}&lng=${lng}`)
-.then(()=>{
+  fetch(`${URL}?uid=${UID}&lat=${lat}&lng=${lng}`)
+  .then(r=>r.json())
+  .then(data=>{
 
-infoPage.style.display="none";
-thankPage.style.display="block";
+    // isi dari server
+    nama.innerText = data.nama || "-";
+    lokasi.innerText = data.gudang || "-";
+    statusAbsensi.innerText = data.aksi || "-";
 
-// auto close 10 detik
-setTimeout(()=>{
-window.close();
-},10000);
+    infoPage.style.display="none";
+    thankPage.style.display="block";
 
-});
+    setTimeout(()=>{
+      window.close();
+    },10000);
+
+  });
 
 };
 
