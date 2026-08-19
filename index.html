@@ -45,7 +45,7 @@
     button {
       padding: 15px;
       font-size: 18px;
-      background: green;
+      background: gray;
       color: white;
       border: none;
       border-radius: 10px;
@@ -53,14 +53,9 @@
       margin-top: 20px;
     }
 
-    .row {
-      display: flex;
-      justify-content: space-between;
-      margin: 5px 0;
+    button.active {
+      background: green;
     }
-
-    .label { font-weight: bold; width: 40%; text-align:left; }
-    .value { width: 60%; text-align:left; }
   </style>
 </head>
 
@@ -81,92 +76,112 @@
   <div id="ready" style="display:none;">
     <div class="status green">Dalam Area</div>
     <p>Jarak: <span id="jarak2">-</span></p>
-    <button onclick="absen()">ABSEN</button>
-  </div>
-
-  <!-- STATE 3 -->
-  <div id="result" style="display:none;">
-    <div id="statusResult" class="status"></div>
-
-    <div class="row"><div class="label">Nama</div><div id="nama" class="value">-</div></div>
-    <div class="row"><div class="label">Tanggal</div><div id="tgl" class="value">-</div></div>
-    <div class="row"><div class="label">Jam</div><div id="jam" class="value">-</div></div>
-    <div class="row"><div class="label">Gudang</div><div id="gudang" class="value">-</div></div>
+    <button id="btnAbsen" disabled>ABSEN</button>
   </div>
 
 </div>
 
 <script>
 
+// ===== API =====
 const API = "https://script.google.com/macros/s/AKfycbxwlXN-GC8cavD_8z4k6x-m6-cItZVP2F8P8jkgEuU5N0L3oO3ToZLt0VAaL8xiGhg/exec";
 
+// ===== AMBIL UID =====
 const params = new URLSearchParams(window.location.search);
 const uid = params.get("uid");
 
+// ===== KOORDINAT TARGET =====
+const TARGET_LAT = -6.2341459;
+const TARGET_LNG = 106.4997284;
+const RADIUS = 50;
+
+// ===== VAR GLOBAL =====
+let sudahDalamArea = false;
 let currentLat = "";
 let currentLng = "";
-let sudahReady = false;
 
-// ===== TRACK GPS =====
-navigator.geolocation.watchPosition(async pos => {
+// ===== HITUNG JARAK =====
+function hitungJarak(lat1, lon1, lat2, lon2) {
+  const R = 6371000;
+  const dLat = (lat2 - lat1) * Math.PI/180;
+  const dLon = (lon2 - lon1) * Math.PI/180;
+
+  const a =
+    Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(lat1 * Math.PI/180) *
+    Math.cos(lat2 * Math.PI/180) *
+    Math.sin(dLon/2) * Math.sin(dLon/2);
+
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+  return R * c;
+}
+
+// ===== GPS TRACKING =====
+navigator.geolocation.watchPosition(pos => {
 
   currentLat = pos.coords.latitude;
   currentLng = pos.coords.longitude;
 
-  let res = await fetch(API + "?uid=" + uid + "&lat=" + currentLat + "&lng=" + currentLng);
-  let data = await res.json();
+  const jarak = hitungJarak(currentLat, currentLng, TARGET_LAT, TARGET_LNG);
 
-  // LUAR AREA
-  if(data.status == "OUTSIDE"){
-    document.getElementById("jarak").innerText = data.jarak + " m";
-    return;
-  }
+  document.getElementById("jarak").innerText =
+    Math.round(jarak) + " m";
 
-  // MASUK AREA
-  if(data.status == "OK" && !sudahReady){
+  // ===== MASUK RADIUS =====
+  if (jarak <= RADIUS && !sudahDalamArea) {
 
-    sudahReady = true;
+    sudahDalamArea = true;
 
     document.getElementById("loading").style.display = "none";
     document.getElementById("ready").style.display = "block";
 
-    document.getElementById("jarak2").innerText = "0 - OK";
+    document.getElementById("jarak2").innerText =
+      Math.round(jarak) + " m";
+
+    let btn = document.getElementById("btnAbsen");
+    btn.disabled = false;
+    btn.classList.add("active");
   }
 
+}, err => {
+  document.querySelector(".status").innerText = "Gagal ambil lokasi";
+},{
+  enableHighAccuracy: true,
+  maximumAge: 0,
+  timeout: 10000
 });
 
 // ===== KLIK ABSEN =====
-async function absen(){
+document.getElementById("btnAbsen").onclick = async function(){
 
-  document.getElementById("ready").style.display = "none";
-  document.getElementById("loading").style.display = "block";
-
-  let res = await fetch(API + "?uid=" + uid + "&lat=" + currentLat + "&lng=" + currentLng);
-  let data = await res.json();
-
-  document.getElementById("loading").style.display = "none";
-  document.getElementById("result").style.display = "block";
-
-  if(data.status == "OK"){
-
-    document.getElementById("statusResult").innerText = "ABSEN " + data.aksi;
-    document.getElementById("statusResult").className = "status green";
-
-    document.getElementById("nama").innerText = data.nama;
-    document.getElementById("gudang").innerText = data.gudang;
-
-    const now = new Date();
-    document.getElementById("tgl").innerText = now.toLocaleDateString("id-ID");
-    document.getElementById("jam").innerText = now.toLocaleTimeString("id-ID");
-
-  } else {
-    document.getElementById("statusResult").innerText = "Gagal";
+  if(!uid){
+    alert("UID tidak ada");
+    return;
   }
 
-  setTimeout(()=>{
-    window.location.href = window.location.pathname;
-  },10000);
-}
+  this.innerText = "Mengirim...";
+  this.disabled = true;
+
+  try{
+
+    let res = await fetch(API + "?uid=" + uid + "&lat=" + currentLat + "&lng=" + currentLng);
+    let data = await res.json();
+
+    if(data.status == "OK"){
+      alert("ABSEN " + data.aksi + "\n" + data.nama);
+    } else {
+      alert("Gagal: " + data.status);
+    }
+
+  }catch(e){
+    alert("Gagal koneksi");
+  }
+
+  this.innerText = "ABSEN";
+  this.disabled = false;
+
+};
 
 </script>
 
