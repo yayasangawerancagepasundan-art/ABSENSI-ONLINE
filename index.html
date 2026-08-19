@@ -43,101 +43,80 @@
 <button onclick="scanNFC()">SCAN KARTU</button>
 
 <div class="box">
-  <p id="info">Status: -</p>
-  <p id="raw">RAW: -</p>
-  <p id="uid">UID: -</p>
+  <p id="status">Status: Menunggu scan...</p>
+  <p id="uid">ID: -</p>
   <p id="server">Server: -</p>
 </div>
 
 <script>
 
 async function scanNFC() {
+
+  if (!('NDEFReader' in window)) {
+    alert("HP tidak support NFC Web");
+    return;
+  }
+
   try {
     const ndef = new NDEFReader();
     await ndef.scan();
 
-    document.getElementById("info").innerText = "Dekatkan kartu NFC...";
+    document.getElementById("status").innerText = "Dekatkan kartu ke HP...";
 
-    ndef.onreading = event => {
+    ndef.onreading = async (event) => {
 
-      let uidText = "";
-      let rawText = "";
+      let uid = "";
 
-      try {
-        for (const record of event.message.records) {
-
-          // tampilkan raw HEX
-          let dataArray = new Uint8Array(record.data);
-          rawText = Array.from(dataArray)
-            .map(b => b.toString(16).padStart(2, '0'))
-            .join(' ');
-
-          console.log("RAW:", rawText);
-
-          // decode TEXT record
-          if (record.recordType === "text") {
-
-            const decoder = new TextDecoder(record.encoding || "utf-8");
-
-            let langLength = dataArray[0] & 0x3F;
-
-            uidText = decoder.decode(dataArray.slice(1 + langLength));
-          }
-
-          // fallback kalau gagal
-          if (!uidText) {
-            let fallback = new TextDecoder().decode(dataArray);
-            uidText = fallback.replace(/[^\x20-\x7E]/g, "");
-          }
+      // ambil isi NDEF (bukan UID asli)
+      for (const record of event.message.records) {
+        if (record.recordType === "text") {
+          const textDecoder = new TextDecoder();
+          uid = textDecoder.decode(record.data);
         }
-
-      } catch (e) {
-        console.log("Decode error:", e);
       }
 
-      // tampilkan hasil
-      document.getElementById("raw").innerText = "RAW: " + rawText;
-
-      if (!uidText) {
-        document.getElementById("uid").innerText = "UID: GAGAL BACA";
+      if (!uid) {
+        document.getElementById("status").innerText = "Kartu kosong!";
         return;
       }
 
-      document.getElementById("uid").innerText = "UID: " + uidText;
-      document.getElementById("info").innerText = "Kartu terbaca";
+      document.getElementById("uid").innerText = "ID: " + uid;
+      document.getElementById("status").innerText = "Mengirim ke server...";
 
-      // kirim ke server
-      kirimKeServer(uidText);
+      // ambil lokasi
+      navigator.geolocation.getCurrentPosition(async function(pos) {
+
+        let lat = pos.coords.latitude;
+        let lng = pos.coords.longitude;
+
+        try {
+
+          let res = await fetch("https://script.google.com/macros/s/AKfycbxQYvZIxsv-KrVS2k3wKtmAtq3iOQuoz2PErPJP764YIvOiKv8lvx8IcFO44-tQc4A/exec", {
+            method: "POST",
+            body: JSON.stringify({
+              uid: uid,
+              lat: lat,
+              lng: lng
+            })
+          });
+
+          let data = await res.json();
+
+          document.getElementById("status").innerText = "Berhasil";
+          document.getElementById("server").innerText = JSON.stringify(data);
+
+        } catch (err) {
+          document.getElementById("status").innerText = "Gagal kirim ke server";
+        }
+
+      }, function() {
+        document.getElementById("status").innerText = "Gagal ambil lokasi";
+      });
+
     };
 
-  } catch (err) {
-    alert("HP tidak support NFC / izin ditolak");
-    console.log(err);
-  }
-}
-
-async function kirimKeServer(uid) {
-
-  document.getElementById("info").innerText = "Kirim ke server...";
-
-  try {
-    let res = await fetch("https://script.google.com/macros/s/AKfycbyrlWCsEXuAFpv0qdAw7JLclCjjooQ3MT3wg3LKgT0CxWEa9mBGOw_9QF83mrR3toY/exec", {
-      method: "POST",
-      body: JSON.stringify({
-        uid: uid
-      })
-    });
-
-    let data = await res.json();
-
-    document.getElementById("server").innerText =
-      "Server: " + JSON.stringify(data);
-
-    document.getElementById("info").innerText = "Selesai";
-
-  } catch (e) {
-    document.getElementById("server").innerText = "Server: ERROR";
-    console.log(e);
+  } catch (error) {
+    alert("Error NFC: " + error);
   }
 }
 
