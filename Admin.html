@@ -26,7 +26,6 @@ body{
 
 .title{
   font-size:18px;
-  letter-spacing:1px;
 }
 
 .btn{
@@ -52,12 +51,6 @@ body{
   padding:15px;
   border-radius:15px;
   box-shadow:0 0 10px rgba(0,255,100,0.1);
-  transition:0.3s;
-}
-
-.card:hover{
-  transform:scale(1.02);
-  box-shadow:0 0 20px rgba(0,255,100,0.3);
 }
 
 /* JAM */
@@ -70,7 +63,6 @@ body{
 /* TOTAL */
 .total{
   font-size:28px;
-  font-weight:bold;
   text-align:center;
 }
 
@@ -88,7 +80,6 @@ body{
   border-radius:10px;
   padding:10px;
   text-align:center;
-  box-shadow:0 0 10px rgba(0,255,100,0.1);
 }
 
 /* LIVE */
@@ -99,18 +90,30 @@ body{
   border-radius:10px;
   display:flex;
   justify-content:space-between;
-  animation:fadeIn 0.5s;
 }
 
-@keyframes fadeIn{
-  from{opacity:0; transform:translateY(-10px);}
-  to{opacity:1; transform:translateY(0);}
+/* FORM */
+#formUser{
+  display:none;
+  padding:10px;
 }
 
-/* STATUS COLOR */
-.masuk{ color:#00ff66; }
-.keluar{ color:#ff4444; }
+#formUser input{
+  width:100%;
+  padding:10px;
+  margin-top:10px;
+  border-radius:8px;
+  border:none;
+  background:#222;
+  color:white;
+}
 
+#formUser button{
+  margin-top:10px;
+  padding:10px;
+  border:none;
+  border-radius:10px;
+}
 </style>
 </head>
 
@@ -119,7 +122,7 @@ body{
 <!-- HEADER -->
 <div class="header">
   <div class="title">⚡ ADMIN PANEL</div>
-  <button class="btn" onclick="location.href='user.html'">+ USER</button>
+  <button class="btn" onclick="toggleForm()">+ USER</button>
 </div>
 
 <!-- JAM -->
@@ -127,19 +130,15 @@ body{
 
 <!-- GRID -->
 <div class="grid">
-
-  <!-- TOTAL -->
   <div class="card">
     <div>Total Absen</div>
     <div class="total" id="total">0</div>
   </div>
 
-  <!-- TOTAL JAM -->
   <div class="card">
     <div>Total Jam</div>
     <div class="total" id="jamTotal">0</div>
   </div>
-
 </div>
 
 <!-- GUDANG -->
@@ -152,6 +151,22 @@ body{
 <div class="card" style="margin:10px;">
   <div>Live Aktivitas</div>
   <div id="liveBox"></div>
+</div>
+
+<!-- FORM TAMBAH USER -->
+<div id="formUser">
+  <div class="card">
+    <h3>TAMBAH USER</h3>
+
+    <input id="uid" placeholder="UID RFID">
+    <input id="nama" placeholder="Nama">
+    <input id="gudang" placeholder="Gudang">
+    <input id="lat" placeholder="Latitude">
+    <input id="lng" placeholder="Longitude">
+
+    <button onclick="simpanUser()">SIMPAN</button>
+    <button onclick="toggleForm()">BATAL</button>
+  </div>
 </div>
 
 <script>
@@ -175,7 +190,6 @@ function loadData(){
     document.getElementById("total").innerText = d.total || 0;
     document.getElementById("jamTotal").innerText = d.totalJam || 0;
 
-    /* GUDANG */
     let g = "";
     d.gudang.forEach(x=>{
       g += `
@@ -185,14 +199,12 @@ function loadData(){
     });
     document.getElementById("gudangBox").innerHTML = g;
 
-    /* LIVE */
     let l = "";
     d.live.forEach(x=>{
-      let cls = x.aksi=="MASUK" ? "masuk" : "keluar";
       l += `
       <div class="liveItem">
         <div>${x.nama}</div>
-        <div class="${cls}">${x.aksi}</div>
+        <div>${x.aksi}</div>
         <div>${x.jam}</div>
       </div>`;
     });
@@ -202,6 +214,39 @@ function loadData(){
 
 }
 
+/* FORM CONTROL */
+function toggleForm(){
+  let f = document.getElementById("formUser");
+  f.style.display = f.style.display=="none" ? "block" : "none";
+}
+
+function simpanUser(){
+
+  let uid = document.getElementById("uid").value.trim();
+  let nama = document.getElementById("nama").value.trim();
+  let gudang = document.getElementById("gudang").value.trim();
+  let lat = document.getElementById("lat").value.trim();
+  let lng = document.getElementById("lng").value.trim();
+
+  if(!uid || !nama || !gudang || !lat || !lng){
+    alert("SEMUA HARUS DIISI");
+    return;
+  }
+
+  fetch(`${URL}?mode=addUser&uid=${uid}&nama=${nama}&gudang=${gudang}&lat=${lat}&lng=${lng}`)
+  .then(r=>r.json())
+  .then(d=>{
+    if(d.status=="OK"){
+      alert("USER DITAMBAHKAN");
+      toggleForm();
+      loadData();
+    }else{
+      alert("GAGAL");
+    }
+  });
+}
+
+/* AUTO */
 setInterval(loadData,5000);
 loadData();
 
