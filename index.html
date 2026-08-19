@@ -70,6 +70,7 @@
       0% { transform: rotate(0deg); }
       100% { transform: rotate(360deg); }
     }
+
   </style>
 </head>
 
@@ -79,9 +80,9 @@
 
 <div class="card">
 
-  <!-- LOADING -->
+  <!-- LOADING (DIPAKAI TERUS) -->
   <div id="loading">
-    <div class="status red">Mencari lokasi...</div>
+    <div id="statusText" class="status red">Mencari lokasi...</div>
     <div class="loader"></div>
     <p>Jarak: <span id="jarak">-</span></p>
     <p>Akurasi: <span id="akurasi">-</span></p>
@@ -89,9 +90,6 @@
 
   <!-- READY -->
   <div id="ready" style="display:none;">
-    <div class="status green">Dalam Area</div>
-    <p>Jarak: <span id="jarak2">-</span></p>
-    <p>Akurasi: <span id="akurasi2">-</span></p>
     <button id="btnAbsen" disabled>ABSEN</button>
   </div>
 
@@ -158,7 +156,7 @@ function hitungJarak(lat1, lon1, lat2, lon2) {
 let dot = 0;
 setInterval(() => {
   dot = (dot + 1) % 4;
-  document.querySelector("#loading .status").innerText =
+  document.getElementById("statusText").innerText =
     "Mencari lokasi" + ".".repeat(dot);
 }, 500);
 
@@ -171,18 +169,15 @@ navigator.geolocation.watchPosition(pos => {
   const accuracy = pos.coords.accuracy;
   const jarak = hitungJarak(currentLat, currentLng, TARGET_LAT, TARGET_LNG);
 
-  // update loading
   document.getElementById("jarak").innerText = Math.round(jarak) + " m";
   document.getElementById("akurasi").innerText = "± " + Math.round(accuracy) + " m";
 
-  // update ready
-  if(document.getElementById("jarak2")){
-    document.getElementById("jarak2").innerText = Math.round(jarak) + " m";
-    document.getElementById("akurasi2").innerText = "± " + Math.round(accuracy) + " m";
-  }
-
   if (jarak <= RADIUS) {
-    document.getElementById("loading").style.display = "none";
+
+    // ubah status tanpa hilangkan spinner
+    document.getElementById("statusText").innerText = "Dalam Area";
+    document.getElementById("statusText").className = "status green";
+
     document.getElementById("ready").style.display = "block";
 
     let btn = document.getElementById("btnAbsen");
@@ -190,12 +185,6 @@ navigator.geolocation.watchPosition(pos => {
     btn.classList.add("active");
   }
 
-}, err => {
-  alert("GPS ERROR: " + err.message);
-},{
-  enableHighAccuracy: true,
-  maximumAge: 3000,
-  timeout: 15000
 });
 
 // ===== ABSEN =====
