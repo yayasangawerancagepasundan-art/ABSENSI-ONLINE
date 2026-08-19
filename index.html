@@ -34,34 +34,48 @@
       border: none;
       background: gray;
       color: white;
+      margin-top: 10px;
     }
 
     button.active {
       background: green;
     }
 
-    /* ===== RADAR ===== */
+    /* ===== RADAR + MAP ===== */
     .radar {
       position: relative;
       width: 200px;
       height: 200px;
       margin: 20px auto;
       border-radius: 50%;
-      background: rgba(0,0,0,0.05);
       overflow: hidden;
-      transition: transform 0.3s ease;
+      background: black;
     }
 
-    /* sweep */
+    .radar iframe {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      border: none;
+      filter: grayscale(0.3) brightness(0.9);
+    }
+
+    .overlay {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+    }
+
+    /* sweep stabil */
     .sweep {
       position: absolute;
       width: 100%;
       height: 100%;
       border-radius: 50%;
       background: conic-gradient(
-        rgba(0,255,100,0.6) 0deg,
-        rgba(0,255,100,0.2) 30deg,
-        transparent 60deg
+        rgba(0,255,100,0.5) 0deg,
+        rgba(0,255,100,0.2) 40deg,
+        transparent 80deg
       );
       animation: rotate 2s linear infinite;
     }
@@ -75,7 +89,7 @@
       position: absolute;
       width: 20px;
       height: 20px;
-      background: rgba(0,255,100,0.4);
+      background: rgba(0,255,100,0.3);
       border-radius: 50%;
       top: 50%;
       left: 50%;
@@ -84,17 +98,11 @@
     }
 
     @keyframes sonarWave {
-      0% {
-        transform: translate(-50%, -50%) scale(0.3);
-        opacity: 1;
-      }
-      100% {
-        transform: translate(-50%, -50%) scale(4);
-        opacity: 0;
-      }
+      0% { transform: translate(-50%, -50%) scale(0.3); opacity: 1; }
+      100% { transform: translate(-50%, -50%) scale(3); opacity: 0; }
     }
 
-    /* center */
+    /* titik hp */
     .center-dot {
       position: absolute;
       width: 10px;
@@ -109,10 +117,22 @@
     /* target */
     .target-dot {
       position: absolute;
-      width: 8px;
-      height: 8px;
+      width: 10px;
+      height: 10px;
       background: red;
       border-radius: 50%;
+      transition: 0.3s;
+    }
+
+    /* lock hanya di titik */
+    .target-lock {
+      animation: lockZoom 0.6s infinite alternate;
+      background: lime !important;
+    }
+
+    @keyframes lockZoom {
+      0% { transform: scale(1); }
+      100% { transform: scale(1.8); }
     }
 
   </style>
@@ -126,11 +146,15 @@
 
   <div id="statusText" class="status red">Mencari lokasi...</div>
 
-  <div class="radar" id="radar">
-    <div class="sweep"></div>
-    <div class="sonar"></div>
-    <div class="center-dot"></div>
-    <div class="target-dot" id="targetDot"></div>
+  <div class="radar">
+    <iframe id="mapFrame"></iframe>
+
+    <div class="overlay">
+      <div class="sweep"></div>
+      <div class="sonar"></div>
+      <div class="center-dot"></div>
+      <div class="target-dot" id="targetDot"></div>
+    </div>
   </div>
 
   <p>Jarak: <span id="jarak">-</span></p>
@@ -174,22 +198,29 @@ navigator.geolocation.watchPosition(pos => {
   document.getElementById("jarak").innerText = Math.round(jarak) + " m";
   document.getElementById("akurasi").innerText = "± " + Math.round(accuracy) + " m";
 
-  // ===== AUTO ZOOM =====
-  let zoom = 1 + (100 / (jarak + 50)); // makin dekat makin zoom
-  zoom = Math.min(2.5, zoom); // batas max zoom
+  // ===== ZOOM STEP (HALUS BERDASARKAN JARAK) =====
+  let zoom;
 
-  document.getElementById("radar").style.transform = "scale(" + zoom + ")";
+  if (jarak > 500) zoom = 15;
+  else if (jarak > 300) zoom = 16;
+  else if (jarak > 200) zoom = 17;
+  else if (jarak > 100) zoom = 18;
+  else if (jarak > 50) zoom = 19;
+  else zoom = 20;
+
+  document.getElementById("mapFrame").src =
+    `https://maps.google.com/maps?q=${lat},${lng}&z=${zoom}&output=embed`;
 
   // ===== POSISI TARGET =====
   let dx = TARGET_LNG - lng;
   let dy = TARGET_LAT - lat;
 
-  let scale = 100000 * (1/zoom); // ikut zoom
+  let scale = 100000;
 
   let x = dx * scale;
   let y = dy * scale;
 
-  let max = 90;
+  let max = 80;
   x = Math.max(-max, Math.min(max, x));
   y = Math.max(-max, Math.min(max, y));
 
@@ -197,10 +228,6 @@ navigator.geolocation.watchPosition(pos => {
 
   target.style.left = (100 + x) + "px";
   target.style.top = (100 - y) + "px";
-
-  // ===== SPEED SWEEP =====
-  let speed = Math.max(0.5, jarak / 100);
-  document.querySelector(".sweep").style.animationDuration = speed + "s";
 
   // ===== LOCK =====
   if (jarak <= RADIUS && !locked) {
@@ -210,9 +237,10 @@ navigator.geolocation.watchPosition(pos => {
     document.getElementById("statusText").innerText = "TARGET TERKUNCI";
     document.getElementById("statusText").className = "status green";
 
+    target.classList.add("target-lock");
+
     document.getElementById("btnAbsen").disabled = false;
     document.getElementById("btnAbsen").classList.add("active");
-
   }
 
 }, err => {
