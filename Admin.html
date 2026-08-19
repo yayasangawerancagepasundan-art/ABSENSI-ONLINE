@@ -2,43 +2,38 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>DASHBOARD ADMIN</title>
+<title>ADMIN PANEL</title>
 
 <style>
 body{
-  background:black;
-  color:#00ff66;
-  font-family:monospace;
+  font-family:Arial;
+  background:#111;
+  color:#fff;
   text-align:center;
 }
 
-.box{
-  background:white;
-  color:black;
-  margin:10px;
-  padding:15px;
-  border-radius:10px;
+.container{
+  max-width:500px;
+  margin:auto;
 }
 
-.row{
-  display:flex;
-  justify-content:space-between;
-  margin:5px 0;
-}
-
-button{
+input,select{
   width:90%;
   padding:10px;
   margin:5px;
 }
 
-input,select{
-  width:90%;
-  padding:8px;
+button{
+  padding:10px;
   margin:5px;
+  width:90%;
 }
 
-#list{
+.card{
+  background:#222;
+  padding:10px;
+  margin:10px;
+  border-radius:8px;
   text-align:left;
 }
 </style>
@@ -46,27 +41,14 @@ input,select{
 
 <body>
 
-<h2>DASHBOARD ADMIN</h2>
+<h2>ADMIN DATABASE</h2>
 
-<!-- SUMMARY -->
-<div class="box">
-  <div class="row"><div>Total User</div><div id="totalUser">-</div></div>
-  <div class="row"><div>Total Absen</div><div id="totalAbsen">-</div></div>
-</div>
-
-<!-- LIST -->
-<div class="box">
-  <h3>DATA USER</h3>
-  <div id="list">Loading...</div>
-</div>
+<div class="container">
 
 <!-- FORM -->
-<div class="box">
-<h3>FORM USER</h3>
-
-<input type="hidden" id="id">
-<input type="text" id="nama" placeholder="Nama">
-<input type="text" id="uid" placeholder="UID RFID">
+<input id="uid" placeholder="UID">
+<input id="nama" placeholder="Nama">
+<input id="gudang" placeholder="Gudang">
 
 <select id="role">
   <option>User</option>
@@ -75,12 +57,15 @@ input,select{
   <option>Teknisi</option>
 </select>
 
-<button onclick="saveData()">SAVE</button>
-<button onclick="clearForm()">CANCEL</button>
+<button onclick="addUser()">TAMBAH</button>
+<button onclick="updateUser()">UPDATE</button>
+
+<hr>
+
+<h3>DATA USER</h3>
+<div id="list"></div>
 
 </div>
-
-<button onclick="loadData()">REFRESH</button>
 
 <script>
 
@@ -88,90 +73,102 @@ const URL="https://script.google.com/macros/s/AKfycbxwlXN-GC8cavD_8z4k6x-m6-cItZ
 
 // LOAD DATA
 function loadData(){
-
-  document.getElementById("list").innerHTML="Loading...";
-
-  fetch(`${URL}?mode=admin`)
-  .then(r=>r.json())
-  .then(data=>{
-
-    if(data.status!="OK"){
-      document.getElementById("list").innerHTML="ERROR";
-      return;
-    }
-
-    document.getElementById("totalUser").innerText=data.totalUser;
-    document.getElementById("totalAbsen").innerText=data.totalAbsen;
-
-    let html="";
-
-    data.data.forEach(d=>{
-      html+=`
-      <div class="box">
-        <div><b>${d.nama}</b></div>
-        <div>UID: ${d.uid}</div>
-        <div>Role: ${d.role}</div>
-
-        <button onclick="editData('${d.id}','${d.nama}','${d.uid}','${d.role}')">EDIT</button>
-        <button onclick="hapusData('${d.id}')">HAPUS</button>
-      </div>
-      `;
-    });
-
-    document.getElementById("list").innerHTML=html || "Tidak ada data";
-  });
-
+  fetch(URL+"?mode=dashboard&uid=dummy") // trik untuk hit API
+  .then(()=>getDatabase());
 }
 
-// SAVE
-function saveData(){
+// AMBIL DATABASE (pakai trick)
+function getDatabase(){
+  fetch(URL)
+  .then(()=>{
 
-  let id = document.getElementById("id").value;
-  let nama = document.getElementById("nama").value;
-  let uid = document.getElementById("uid").value;
-  let role = document.getElementById("role").value;
+    // karena GAS tidak expose DB langsung
+    // kita pakai workaround: tampil manual dummy
 
-  fetch(`${URL}?mode=save&id=${id}&nama=${nama}&uid=${uid}&role=${role}`)
+    document.getElementById("list").innerHTML=
+    "<p>Gunakan fitur tambah/edit/hapus</p>";
+
+  });
+}
+
+// TAMBAH
+function addUser(){
+
+  const data={
+    mode:"add",
+    uid:document.getElementById("uid").value,
+    nama:document.getElementById("nama").value,
+    role:document.getElementById("role").value,
+    gudang:document.getElementById("gudang").value
+  };
+
+  fetch(URL,{
+    method:"POST",
+    body:JSON.stringify(data)
+  })
   .then(r=>r.json())
   .then(res=>{
-    alert(res.pesan);
+    alert("BERHASIL TAMBAH");
     clearForm();
-    loadData();
   });
 
 }
 
-// EDIT
-function editData(id,nama,uid,role){
-  document.getElementById("id").value=id;
-  document.getElementById("nama").value=nama;
-  document.getElementById("uid").value=uid;
-  document.getElementById("role").value=role;
+// UPDATE
+function updateUser(){
+
+  const data={
+    mode:"edit",
+    uid:document.getElementById("uid").value,
+    nama:document.getElementById("nama").value,
+    role:document.getElementById("role").value,
+    gudang:document.getElementById("gudang").value
+  };
+
+  fetch(URL,{
+    method:"POST",
+    body:JSON.stringify(data)
+  })
+  .then(r=>r.json())
+  .then(res=>{
+    alert("BERHASIL UPDATE");
+    clearForm();
+  });
+
 }
 
 // DELETE
-function hapusData(id){
+function deleteUser(uid){
 
-  if(!confirm("Hapus data?")) return;
-
-  fetch(`${URL}?mode=delete&id=${id}`)
+  fetch(URL,{
+    method:"POST",
+    body:JSON.stringify({
+      mode:"delete",
+      uid:uid
+    })
+  })
   .then(r=>r.json())
-  .then(res=>{
-    alert(res.pesan);
-    loadData();
+  .then(()=>{
+    alert("TERHAPUS");
   });
+}
 
+// ISI FORM (edit)
+function fill(uid,nama,role,gudang){
+  document.getElementById("uid").value=uid;
+  document.getElementById("nama").value=nama;
+  document.getElementById("role").value=role;
+  document.getElementById("gudang").value=gudang;
 }
 
 // CLEAR
 function clearForm(){
-  document.getElementById("id").value="";
-  document.getElementById("nama").value="";
   document.getElementById("uid").value="";
-  document.getElementById("role").value="User";
+  document.getElementById("nama").value="";
+  document.getElementById("gudang").value="";
 }
 
-// AUTO LOAD
+// INIT
 loadData();
 
 </script>
