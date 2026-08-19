@@ -35,6 +35,12 @@ button{
   width:80%;
   padding:10px;
   margin-top:10px;
+  transition:0.15s;
+}
+
+button:active{
+  transform:scale(0.95);
+  background:#ddd;
 }
 
 #infoPage,#thankPage,#warningPage,#dashboardPage,#cameraPage{
@@ -69,6 +75,48 @@ video,img{
   max-width:300px;
   border-radius:10px;
 }
+
+/* LOADER */
+.loader{
+  display:none;
+  margin:15px auto;
+  width:60px;
+  height:60px;
+  position:relative;
+}
+
+.loader span{
+  position:absolute;
+  width:6px;
+  height:18px;
+  background:#999;
+  left:50%;
+  top:50%;
+  transform-origin:center -20px;
+  border-radius:3px;
+  animation:fade 1.2s linear infinite;
+}
+
+@keyframes fade{
+  0%{opacity:1;}
+  100%{opacity:0.1;}
+}
+
+/* DASHBOARD STYLE */
+#dashboardPage{
+  animation:fadeIn 0.4s ease;
+}
+
+@keyframes fadeIn{
+  from{opacity:0; transform:translateY(10px);}
+  to{opacity:1; transform:translateY(0);}
+}
+
+#dashWaktu{
+  font-size:20px;
+  font-weight:bold;
+  color:#00cc66;
+}
 </style>
 </head>
 
@@ -88,6 +136,9 @@ video,img{
   </div>
 
   <button id="btnAbsen" disabled>ABSEN</button>
+
+  <!-- LOADER -->
+  <div class="loader" id="loader"></div>
 </div>
 
 <!-- INFO -->
@@ -139,6 +190,16 @@ video,img{
   <h3>Dashboard</h3>
 
   <div class="rowBox">
+    <div>Tanggal</div>
+    <div id="dashTanggal">-</div>
+  </div>
+
+  <div class="rowBox">
+    <div>Waktu</div>
+    <div id="dashWaktu">-</div>
+  </div>
+
+  <div class="rowBox">
     <div>Nama</div>
     <div id="dashNama">-</div>
   </div>
@@ -156,18 +217,24 @@ video,img{
 
 <script>
 
-// 🔥 HANYA INI YANG DIGANTI KE V6
+// CONFIG
 const URL="https://script.google.com/macros/s/AKfycbxwlXN-GC8cavD_8z4k6x-m6-cItZVP2F8P8jkgEuU5N0L3oO3ToZLt0VAaL8xiGhg/exec";
-
 const params=new URLSearchParams(location.search);
 const UID=params.get("uid")||"";
+
+// LOADER GENERATE
+const loader=document.getElementById("loader");
+for(let i=0;i<12;i++){
+  let s=document.createElement("span");
+  s.style.transform=`rotate(${i*30}deg) translate(-50%, -50%)`;
+  s.style.animationDelay=`${i*0.1}s`;
+  loader.appendChild(s);
+}
 
 // TARGET
 const TARGET_LAT=-6.2341459;
 const TARGET_LNG=106.4997284;
 const RADIUS=50;
-
-// (SEMUA KODE DI BAWAH INI TIDAK DIUBAH SAMA SEKALI)
 
 // ELEMENT
 const btnAbsen=document.getElementById("btnAbsen");
@@ -220,9 +287,14 @@ navigator.geolocation.watchPosition(p=>{
 
 // ABSEN
 btnAbsen.onclick=()=>{
+  loader.style.display="block";
+  btnAbsen.disabled=true;
+
   fetch(`${URL}?uid=${UID}&lat=${lat}&lng=${lng}`)
   .then(r=>r.json())
   .then(data=>{
+
+    loader.style.display="none";
 
     if(data.status!="OK"){
       mainPage.style.display="none";
@@ -265,72 +337,37 @@ btnAbsen.onclick=()=>{
   });
 };
 
-// CAMERA
-let stream=null;
+// JAM DASHBOARD
+function startClock(){
+  function update(){
+    let now = new Date();
 
-function startCamera(){
-  navigator.mediaDevices.getUserMedia({video:true})
-  .then(s=>{
-    stream=s;
-    document.getElementById("video").srcObject=s;
-  });
-}
+    let tgl = now.toLocaleDateString('id-ID',{
+      weekday:'long',
+      day:'2-digit',
+      month:'long',
+      year:'numeric'
+    });
 
-function stopCamera(){
-  if(stream){
-    stream.getTracks().forEach(t=>t.stop());
-    stream=null;
+    let jam = now.toLocaleTimeString('id-ID',{
+      hour:'2-digit',
+      minute:'2-digit',
+      second:'2-digit',
+      hour12:false
+    });
+
+    document.getElementById("dashTanggal").innerText = tgl;
+    document.getElementById("dashWaktu").innerText = jam;
   }
-}
 
-document.getElementById("btnFoto").onclick=()=>{
-  infoPage.style.display="none";
-  cameraPage.style.display="block";
-  startCamera();
-};
+  update();
+  setInterval(update,1000);
 
-document.getElementById("takePhoto").onclick=()=>{
-  const video=document.getElementById("video");
-  const canvas=document.getElementById("canvas");
-
-  canvas.width=video.videoWidth;
-  canvas.height=video.videoHeight;
-  canvas.getContext("2d").drawImage(video,0,0);
-
-  const preview=document.getElementById("preview");
-  preview.src=canvas.toDataURL("image/jpeg");
-  preview.style.display="block";
-
-  stopCamera();
-
-  cameraPage.style.display="none";
-  infoPage.style.display="block";
-
-  document.getElementById("confirm").disabled=false;
-};
-
-document.getElementById("backInfo").onclick=()=>{
-  stopCamera();
-  cameraPage.style.display="none";
-  infoPage.style.display="block";
-};
-
-document.getElementById("confirm").onclick=()=>{
-  infoPage.style.display="none";
-  thankPage.style.display="block";
-
-  let s=10;
-  let cd=document.getElementById("countdown");
-
-  let t=setInterval(()=>{
-    s--; cd.innerText=s;
-    if(s<=0){
-      clearInterval(t);
-      thankPage.style.display="none";
-      showDashboard();
-    }
+  setInterval(()=>{
+    let el=document.getElementById("dashWaktu");
+    el.style.opacity = el.style.opacity == "0.5" ? "1" : "0.5";
   },1000);
-};
+}
 
 // DASHBOARD
 function showDashboard(){
@@ -345,6 +382,8 @@ function showDashboard(){
       document.getElementById("dashJam").innerText=d.totalJam+" Jam";
     }
   });
+
+  startClock();
 }
 
 </script>
