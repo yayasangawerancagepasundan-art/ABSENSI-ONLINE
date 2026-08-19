@@ -166,13 +166,13 @@ const TARGET_LNG = 106.4997284;
 const RADIUS = 50;
 
 let locked = false;
+let firstFix = false;
 
-// hitung jarak
+// ===== HITUNG JARAK =====
 function distance(lat1, lon1, lat2, lon2) {
   const R = 6371000;
-
-  const dLat = (lat2 - lat1) * Math.PI/180;
-  const dLon = (lon2 - lon1) * Math.PI/180;
+  const dLat = (lat2-lat1) * Math.PI/180;
+  const dLon = (lon2-lon1) * Math.PI/180;
 
   const a = Math.sin(dLat/2)**2 +
     Math.cos(lat1*Math.PI/180) *
@@ -182,70 +182,82 @@ function distance(lat1, lon1, lat2, lon2) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 }
 
-// GPS TRACKING
-navigator.geolocation.watchPosition(
+// ===== UPDATE UI =====
+function updateUI(lat, lng, acc) {
 
+  let d = distance(lat, lng, TARGET_LAT, TARGET_LNG);
+
+  document.getElementById("jarak").innerText = Math.round(d) + " m";
+  document.getElementById("akurasi").innerText = "± " + Math.round(acc) + " m";
+
+  document.getElementById("status").innerText = "MENCARI TARGET...";
+
+  let dx = TARGET_LNG - lng;
+  let dy = TARGET_LAT - lat;
+
+  let scale = 120000;
+
+  let x = dx * scale;
+  let y = dy * scale;
+
+  let max = 110;
+  x = Math.max(-max, Math.min(max, x));
+  y = Math.max(-max, Math.min(max, y));
+
+  let target = document.getElementById("target");
+  target.style.left = (130 + x) + "px";
+  target.style.top = (130 - y) + "px";
+
+  if (d <= RADIUS && !locked) {
+    locked = true;
+
+    document.getElementById("status").innerText = "TARGET LOCK";
+    document.getElementById("status").classList.add("lock");
+
+    document.getElementById("crosshair").style.display = "block";
+
+    let btn = document.getElementById("btnAbsen");
+    btn.disabled = false;
+    btn.classList.add("active");
+  }
+}
+
+// ===== GET FIRST FIX =====
+navigator.geolocation.getCurrentPosition(
   pos => {
-
-    let lat = pos.coords.latitude;
-    let lng = pos.coords.longitude;
-    let acc = pos.coords.accuracy;
-
-    let d = distance(lat, lng, TARGET_LAT, TARGET_LNG);
-
-    // tampilkan data
-    document.getElementById("jarak").innerText = Math.round(d) + " m";
-    document.getElementById("akurasi").innerText = "± " + Math.round(acc) + " m";
-
-    document.getElementById("status").innerText = "MENCARI TARGET...";
-    document.getElementById("status").className = "status";
-
-    // posisi target di radar
-    let dx = TARGET_LNG - lng;
-    let dy = TARGET_LAT - lat;
-
-    let scale = 120000;
-
-    let x = dx * scale;
-    let y = dy * scale;
-
-    let max = 110;
-    x = Math.max(-max, Math.min(max, x));
-    y = Math.max(-max, Math.min(max, y));
-
-    let target = document.getElementById("target");
-    target.style.left = (130 + x) + "px";
-    target.style.top = (130 - y) + "px";
-
-    // lock jika dalam radius
-    if (d <= RADIUS && !locked) {
-
-      locked = true;
-
-      document.getElementById("status").innerText = "TARGET LOCK";
-      document.getElementById("status").classList.add("lock");
-
-      document.getElementById("crosshair").style.display = "block";
-
-      let btn = document.getElementById("btnAbsen");
-      btn.disabled = false;
-      btn.classList.add("active");
-    }
-
+    firstFix = true;
+    updateUI(pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy);
   },
+  err => {
+    document.getElementById("status").innerText = "IZINKAN LOKASI / AKTIFKAN GPS";
+  },
+  { enableHighAccuracy: true, timeout: 10000 }
+);
 
+// ===== REALTIME TRACK =====
+navigator.geolocation.watchPosition(
+  pos => {
+    firstFix = true;
+    updateUI(pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy);
+  },
   err => {
     document.getElementById("status").innerText = "GPS ERROR: " + err.message;
     document.getElementById("status").classList.add("error");
   },
-
   {
     enableHighAccuracy: true,
     maximumAge: 0,
     timeout: 15000
   }
-
 );
+
+// ===== FALLBACK =====
+setTimeout(() => {
+  if (!firstFix) {
+    document.getElementById("status").innerText =
+      "MENUNGGU GPS... PINDAH KE LUAR RUANGAN";
+  }
+}, 8000);
 
 </script>
 
