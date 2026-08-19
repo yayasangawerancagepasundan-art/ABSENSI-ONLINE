@@ -18,11 +18,7 @@
       border-radius: 15px;
     }
 
-    .status {
-      font-size: 20px;
-      font-weight: bold;
-    }
-
+    .status { font-size: 20px; font-weight: bold; }
     .green { color: green; }
     .red { color: red; }
 
@@ -37,11 +33,9 @@
       margin-top: 10px;
     }
 
-    button.active {
-      background: green;
-    }
+    button.active { background: green; }
 
-    /* ===== RADAR MAP ===== */
+    /* ===== RADAR ===== */
     .radar {
       position: relative;
       width: 200px;
@@ -53,15 +47,19 @@
     }
 
     iframe {
+      position: absolute;
       width: 100%;
       height: 100%;
       border: none;
+      z-index: 1;
     }
 
     .overlay {
       position: absolute;
       width: 100%;
       height: 100%;
+      z-index: 2; /* PENTING */
+      pointer-events: none;
     }
 
     .sweep {
@@ -144,14 +142,13 @@ const TARGET_LNG = 106.4997284;
 const RADIUS = 50;
 
 let locked = false;
-let lastZoom = 17;
-let lastUpdate = 0;
+let mapLoaded = false;
 
-// ===== LOAD MAP SEKALI =====
+// LOAD MAP SEKALI
 document.getElementById("mapFrame").src =
   `https://maps.google.com/maps?q=${TARGET_LAT},${TARGET_LNG}&z=17&output=embed`;
 
-// ===== HITUNG JARAK =====
+// HITUNG JARAK
 function hitungJarak(lat1, lon1, lat2, lon2) {
   const R = 6371000;
   const dLat = (lat2 - lat1) * Math.PI/180;
@@ -165,7 +162,7 @@ function hitungJarak(lat1, lon1, lat2, lon2) {
   return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
 }
 
-// ===== GPS =====
+// GPS
 navigator.geolocation.watchPosition(pos => {
 
   let lat = pos.coords.latitude;
@@ -174,30 +171,23 @@ navigator.geolocation.watchPosition(pos => {
 
   let jarak = hitungJarak(lat, lng, TARGET_LAT, TARGET_LNG);
 
+  // UPDATE UI LANGSUNG
   document.getElementById("jarak").innerText = Math.round(jarak) + " m";
   document.getElementById("akurasi").innerText = "± " + Math.round(accuracy) + " m";
 
-  // ===== ZOOM STEP HALUS (TIDAK KEDIP) =====
-  let zoom;
+  document.getElementById("statusText").innerText = "Mencari lokasi...";
+  document.getElementById("statusText").className = "status red";
 
-  if (jarak > 500) zoom = 15;
-  else if (jarak > 200) zoom = 16;
-  else if (jarak > 100) zoom = 17;
-  else if (jarak > 50) zoom = 18;
-  else zoom = 19;
-
-  // UPDATE MAP TIDAK TERLALU SERING
-  let now = Date.now();
-  if (Math.abs(zoom - lastZoom) >= 1 && (now - lastUpdate > 2000)) {
+  // UPDATE MAP SETIAP 3 DETIK (ANTI FREEZE)
+  if (!mapLoaded || Date.now() % 3000 < 100) {
 
     document.getElementById("mapFrame").src =
-      `https://maps.google.com/maps?q=${lat},${lng}&z=${zoom}&output=embed`;
+      `https://maps.google.com/maps?q=${lat},${lng}&z=18&output=embed`;
 
-    lastZoom = zoom;
-    lastUpdate = now;
+    mapLoaded = true;
   }
 
-  // ===== TARGET POSISI =====
+  // POSISI TARGET
   let dx = TARGET_LNG - lng;
   let dy = TARGET_LAT - lat;
 
@@ -215,7 +205,7 @@ navigator.geolocation.watchPosition(pos => {
   target.style.left = (100 + x) + "px";
   target.style.top = (100 - y) + "px";
 
-  // ===== LOCK =====
+  // LOCK
   if (jarak <= RADIUS && !locked) {
 
     locked = true;
@@ -229,10 +219,12 @@ navigator.geolocation.watchPosition(pos => {
     document.getElementById("btnAbsen").classList.add("active");
   }
 
+}, err => {
+  document.getElementById("statusText").innerText = "GPS ERROR";
 },{
   enableHighAccuracy: true,
-  maximumAge: 3000,
-  timeout: 15000
+  maximumAge: 2000,
+  timeout: 10000
 });
 
 </script>
