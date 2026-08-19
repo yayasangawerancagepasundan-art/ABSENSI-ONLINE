@@ -12,10 +12,6 @@
       background: #f5f5f5;
     }
 
-    h2 {
-      margin-top: 20px;
-    }
-
     button {
       padding: 15px 25px;
       font-size: 18px;
@@ -50,6 +46,15 @@
 
 <script>
 
+function parseTextRecord(record) {
+  const data = new Uint8Array(record.data);
+  const textDecoder = new TextDecoder();
+
+  const langLength = data[0] & 0x3F;
+
+  return textDecoder.decode(data.slice(1 + langLength));
+}
+
 async function scanNFC() {
 
   if (!('NDEFReader' in window)) {
@@ -61,57 +66,49 @@ async function scanNFC() {
     const ndef = new NDEFReader();
     await ndef.scan();
 
-    document.getElementById("status").innerText = "Dekatkan kartu ke HP...";
+    document.getElementById("status").innerText = "Dekatkan kartu NFC...";
 
     ndef.onreading = async (event) => {
 
+      let rawText = "";
       let uid = "";
 
-      // ambil isi NDEF (bukan UID asli)
       for (const record of event.message.records) {
         if (record.recordType === "text") {
-          const textDecoder = new TextDecoder();
-          uid = textDecoder.decode(record.data);
+          rawText = parseTextRecord(record);
         }
       }
 
+      // ambil angka saja
+      uid = rawText.replace(/[^0-9]/g, "");
+
+      document.getElementById("status").innerText = "RAW: " + rawText;
+
       if (!uid) {
-        document.getElementById("status").innerText = "Kartu kosong!";
+        document.getElementById("uid").innerText = "UID: GAGAL BACA";
         return;
       }
 
-      document.getElementById("uid").innerText = "ID: " + uid;
-      document.getElementById("status").innerText = "Mengirim ke server...";
+      document.getElementById("uid").innerText = "UID: " + uid;
 
-      // ambil lokasi
-      navigator.geolocation.getCurrentPosition(async function(pos) {
+      document.getElementById("status").innerText = "Kirim ke server...";
 
-        let lat = pos.coords.latitude;
-        let lng = pos.coords.longitude;
+      try {
+        let res = await fetch("https://script.google.com/macros/s/AKfycbxQYvZIxsv-KrVS2k3wKtmAtq3iOQuoz2PErPJP764YIvOiKv8lvx8IcFO44-tQc4A/exec", {
+          method: "POST",
+          body: JSON.stringify({
+            uid: uid
+          })
+        });
 
-        try {
+        let data = await res.json();
 
-          let res = await fetch("https://script.google.com/macros/s/AKfycbxQYvZIxsv-KrVS2k3wKtmAtq3iOQuoz2PErPJP764YIvOiKv8lvx8IcFO44-tQc4A/exec", {
-            method: "POST",
-            body: JSON.stringify({
-              uid: uid,
-              lat: lat,
-              lng: lng
-            })
-          });
+        document.getElementById("status").innerText = "Berhasil";
+        document.getElementById("server").innerText = JSON.stringify(data);
 
-          let data = await res.json();
-
-          document.getElementById("status").innerText = "Berhasil";
-          document.getElementById("server").innerText = JSON.stringify(data);
-
-        } catch (err) {
-          document.getElementById("status").innerText = "Gagal kirim ke server";
-        }
-
-      }, function() {
-        document.getElementById("status").innerText = "Gagal ambil lokasi";
-      });
+      } catch (err) {
+        document.getElementById("status").innerText = "Gagal kirim";
+      }
 
     };
 
