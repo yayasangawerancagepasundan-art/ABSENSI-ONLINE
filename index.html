@@ -115,7 +115,7 @@ video,img{
 <hr>
 
 <h3>SELFIE WAJIB</h3>
-<video id="video" autoplay></video>
+<video id="video" autoplay playsinline></video>
 <canvas id="canvas" style="display:none;"></canvas>
 <img id="preview" style="display:none;">
 
@@ -166,31 +166,31 @@ video,img{
 
 <script>
 
-// CONFIG
-const URL="https://script.google.com/macros/s/AKfycbxwlXN-GC8cavD_8z4k6x-m6-cItZVP2F8P8jkgEuU5N0L3oO3ToZLt0VAaL8xiGhg/exec";
-const params=new URLSearchParams(location.search);
-const UID=params.get("uid")||"";
+// ===== CONFIG =====
+const URL = "https://script.google.com/macros/s/AKfycbxwlXN-GC8cavD_8z4k6x-m6-cItZVP2F8P8jkgEuU5N0L3oO3ToZLt0VAaL8xiGhg/exec";
+const params = new URLSearchParams(location.search);
+const UID = params.get("uid") || "";
 
 // TARGET
-const TARGET_LAT=-6.2341459;
-const TARGET_LNG=106.4997284;
-const RADIUS=50;
+const TARGET_LAT = -6.2341459;
+const TARGET_LNG = 106.4997284;
+const RADIUS = 50;
 
 // ELEMENT
-const btnAbsen=document.getElementById("btnAbsen");
-const progressBar=document.getElementById("progressBar");
+const btnAbsen = document.getElementById("btnAbsen");
+const progressBar = document.getElementById("progressBar");
 
-const jarak=document.getElementById("jarak");
-const akurasi=document.getElementById("akurasi");
-const status=document.getElementById("status");
+const jarak = document.getElementById("jarak");
+const akurasi = document.getElementById("akurasi");
+const status = document.getElementById("status");
 
-const mainPage=document.getElementById("mainPage");
-const infoPage=document.getElementById("infoPage");
-const warningPage=document.getElementById("warningPage");
-const thankPage=document.getElementById("thankPage");
-const dashboardPage=document.getElementById("dashboardPage");
+const mainPage = document.getElementById("mainPage");
+const infoPage = document.getElementById("infoPage");
+const warningPage = document.getElementById("warningPage");
+const thankPage = document.getElementById("thankPage");
+const dashboardPage = document.getElementById("dashboardPage");
 
-// DISTANCE
+// ===== DISTANCE =====
 function dist(a,b,c,d){
   const R=6371000;
   let dLat=(c-a)*Math.PI/180;
@@ -201,7 +201,7 @@ function dist(a,b,c,d){
   return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));
 }
 
-// GPS
+// ===== GPS =====
 let lat=0,lng=0,locked=false;
 
 navigator.geolocation.watchPosition(p=>{
@@ -224,8 +224,10 @@ navigator.geolocation.watchPosition(p=>{
   }
 });
 
-// ABSEN
+// ===== ABSEN =====
 btnAbsen.onclick=()=>{
+  if(!locked) return alert("Belum dalam radius");
+
   fetch(`${URL}?uid=${UID}&lat=${lat}&lng=${lng}`)
   .then(r=>r.json())
   .then(data=>{
@@ -271,10 +273,11 @@ btnAbsen.onclick=()=>{
   });
 };
 
-// CAMERA
+// ===== CAMERA =====
 navigator.mediaDevices.getUserMedia({video:true})
 .then(s=>video.srcObject=s);
 
+// FOTO
 takePhoto.onclick=()=>{
   canvas.width=video.videoWidth;
   canvas.height=video.videoHeight;
@@ -288,12 +291,14 @@ takePhoto.onclick=()=>{
   retake.style.display="inline-block";
 };
 
+// ULANG
 retake.onclick=()=>{
   preview.style.display="none";
   video.style.display="block";
   confirm.disabled=true;
 };
 
+// ===== KONFIRMASI =====
 confirm.onclick=()=>{
   infoPage.style.display="none";
   thankPage.style.display="block";
@@ -311,7 +316,7 @@ confirm.onclick=()=>{
   },1000);
 };
 
-// DASHBOARD
+// ===== DASHBOARD =====
 function showDashboard(){
   dashboardPage.style.display="block";
 
