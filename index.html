@@ -12,9 +12,7 @@
       text-align: center;
     }
 
-    h2 {
-      margin-top: 20px;
-    }
+    h2 { margin-top: 20px; }
 
     .radar {
       position: relative;
@@ -102,19 +100,9 @@
       transform: translateY(-50%);
     }
 
-    .status {
-      font-size: 18px;
-      margin-top: 10px;
-    }
-
-    .lock {
-      color: lime;
-      font-weight: bold;
-    }
-
-    .error {
-      color: red;
-    }
+    .status { font-size: 18px; margin-top: 10px; }
+    .lock { color: lime; font-weight: bold; }
+    .error { color: red; }
 
     button {
       margin-top: 15px;
@@ -125,6 +113,8 @@
       color: #00ff66;
       border: 1px solid #00ff66;
       border-radius: 8px;
+      position: relative;
+      z-index: 10;
     }
 
     button.active {
@@ -190,29 +180,31 @@ function updateUI(lat, lng, acc) {
   document.getElementById("jarak").innerText = Math.round(d) + " m";
   document.getElementById("akurasi").innerText = "± " + Math.round(acc) + " m";
 
-  document.getElementById("status").innerText = "MENCARI TARGET...";
+  let statusEl = document.getElementById("status");
+
+  if (d > RADIUS) {
+    statusEl.innerText = "MENCARI TARGET...";
+    statusEl.className = "status";
+  }
 
   let dx = TARGET_LNG - lng;
   let dy = TARGET_LAT - lat;
 
   let scale = 120000;
-
-  let x = dx * scale;
-  let y = dy * scale;
-
-  let max = 110;
-  x = Math.max(-max, Math.min(max, x));
-  y = Math.max(-max, Math.min(max, y));
+  let x = Math.max(-110, Math.min(110, dx * scale));
+  let y = Math.max(-110, Math.min(110, dy * scale));
 
   let target = document.getElementById("target");
   target.style.left = (130 + x) + "px";
   target.style.top = (130 - y) + "px";
 
-  if (d <= RADIUS && !locked) {
+  // ===== LOCK STABIL =====
+  if (d <= RADIUS) {
+
     locked = true;
 
-    document.getElementById("status").innerText = "TARGET LOCK";
-    document.getElementById("status").classList.add("lock");
+    statusEl.innerText = "TARGET LOCK";
+    statusEl.classList.add("lock");
 
     document.getElementById("crosshair").style.display = "block";
 
@@ -234,30 +226,41 @@ navigator.geolocation.getCurrentPosition(
   { enableHighAccuracy: true, timeout: 10000 }
 );
 
-// ===== REALTIME TRACK =====
+// ===== REALTIME =====
 navigator.geolocation.watchPosition(
   pos => {
     firstFix = true;
     updateUI(pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy);
   },
   err => {
-    document.getElementById("status").innerText = "GPS ERROR: " + err.message;
-    document.getElementById("status").classList.add("error");
+    document.getElementById("status").innerText = "GPS ERROR";
   },
-  {
-    enableHighAccuracy: true,
-    maximumAge: 0,
-    timeout: 15000
-  }
+  { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 }
 );
 
 // ===== FALLBACK =====
 setTimeout(() => {
   if (!firstFix) {
     document.getElementById("status").innerText =
-      "MENUNGGU GPS... PINDAH KE LUAR RUANGAN";
+      "MENUNGGU GPS... PINDAH KE LUAR";
   }
 }, 8000);
+
+// ===== TOMBOL ABSEN =====
+document.getElementById("btnAbsen").addEventListener("click", function() {
+
+  if (!locked) {
+    alert("Belum dalam radius!");
+    return;
+  }
+
+  // STEP BERIKUTNYA
+  alert("ABSEN BERHASIL - LANJUT STEP");
+
+  // nanti di sini sambung ke:
+  // kamera / kirim server / halaman info
+
+});
 
 </script>
 
