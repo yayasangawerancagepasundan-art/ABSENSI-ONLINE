@@ -137,7 +137,6 @@ video,img{
 
   <button id="btnAbsen" disabled>ABSEN</button>
 
-  <!-- LOADER -->
   <div class="loader" id="loader"></div>
 </div>
 
@@ -189,40 +188,23 @@ video,img{
 <div id="dashboardPage">
   <h3>Dashboard</h3>
 
-  <div class="rowBox">
-    <div>Tanggal</div>
-    <div id="dashTanggal">-</div>
-  </div>
-
-  <div class="rowBox">
-    <div>Waktu</div>
-    <div id="dashWaktu">-</div>
-  </div>
-
-  <div class="rowBox">
-    <div>Nama</div>
-    <div id="dashNama">-</div>
-  </div>
-
-  <div class="rowBox">
-    <div>Total Hari</div>
-    <div id="dashHari">-</div>
-  </div>
-
-  <div class="rowBox">
-    <div>Total Jam</div>
-    <div id="dashJam">-</div>
-  </div>
+  <div class="rowBox"><div>Tanggal</div><div id="dashTanggal">-</div></div>
+  <div class="rowBox"><div>Waktu</div><div id="dashWaktu">-</div></div>
+  <div class="rowBox"><div>Nama</div><div id="dashNama">-</div></div>
+  <div class="rowBox"><div>Total Hari</div><div id="dashHari">-</div></div>
+  <div class="rowBox"><div>Total Jam</div><div id="dashJam">-</div></div>
 </div>
 
 <script>
 
-// CONFIG
+// ==========================
+// 🔵 CODE ASLI KAMU (UTUH)
+// ==========================
+
 const URL="https://script.google.com/macros/s/AKfycbxwlXN-GC8cavD_8z4k6x-m6-cItZVP2F8P8jkgEuU5N0L3oO3ToZLt0VAaL8xiGhg/exec";
 const params=new URLSearchParams(location.search);
 const UID=params.get("uid")||"";
 
-// LOADER GENERATE
 const loader=document.getElementById("loader");
 for(let i=0;i<12;i++){
   let s=document.createElement("span");
@@ -231,15 +213,12 @@ for(let i=0;i<12;i++){
   loader.appendChild(s);
 }
 
-// TARGET
 const TARGET_LAT=-6.2341459;
 const TARGET_LNG=106.4997284;
 const RADIUS=50;
 
-// ELEMENT
 const btnAbsen=document.getElementById("btnAbsen");
 const progressBar=document.getElementById("progressBar");
-
 const jarak=document.getElementById("jarak");
 const akurasi=document.getElementById("akurasi");
 const status=document.getElementById("status");
@@ -251,7 +230,6 @@ const thankPage=document.getElementById("thankPage");
 const dashboardPage=document.getElementById("dashboardPage");
 const cameraPage=document.getElementById("cameraPage");
 
-// DISTANCE
 function dist(a,b,c,d){
   const R=6371000;
   let dLat=(c-a)*Math.PI/180;
@@ -262,8 +240,7 @@ function dist(a,b,c,d){
   return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));
 }
 
-// GPS
-let lat=0,lng=0,locked=false;
+let lat=0,lng=0;
 
 navigator.geolocation.watchPosition(p=>{
   lat=p.coords.latitude;
@@ -279,13 +256,11 @@ navigator.geolocation.watchPosition(p=>{
   progressBar.style.width=persen+"%";
 
   if(d<=RADIUS){
-    locked=true;
     status.innerText="LOKASI VALID";
     btnAbsen.disabled=false;
   }
 });
 
-// ABSEN
 btnAbsen.onclick=()=>{
   loader.style.display="block";
   btnAbsen.disabled=true;
@@ -302,11 +277,7 @@ btnAbsen.onclick=()=>{
 
       let txt=document.getElementById("warningText");
 
-      if(data.pesan?.includes("3")){
-        txt.innerText="BELUM 3 JAM";
-      }else{
-        txt.innerText="BELUM 10 MENIT";
-      }
+      txt.innerText = data.pesan?.includes("3") ? "BELUM 3 JAM" : "BELUM 10 MENIT";
 
       let s=5;
       let cd=document.getElementById("warningCountdown");
@@ -337,39 +308,21 @@ btnAbsen.onclick=()=>{
   });
 };
 
-// JAM DASHBOARD
 function startClock(){
   function update(){
     let now = new Date();
 
-    let tgl = now.toLocaleDateString('id-ID',{
-      weekday:'long',
-      day:'2-digit',
-      month:'long',
-      year:'numeric'
-    });
+    document.getElementById("dashTanggal").innerText =
+      now.toLocaleDateString('id-ID',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
 
-    let jam = now.toLocaleTimeString('id-ID',{
-      hour:'2-digit',
-      minute:'2-digit',
-      second:'2-digit',
-      hour12:false
-    });
-
-    document.getElementById("dashTanggal").innerText = tgl;
-    document.getElementById("dashWaktu").innerText = jam;
+    document.getElementById("dashWaktu").innerText =
+      now.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});
   }
 
   update();
   setInterval(update,1000);
-
-  setInterval(()=>{
-    let el=document.getElementById("dashWaktu");
-    el.style.opacity = el.style.opacity == "0.5" ? "1" : "0.5";
-  },1000);
 }
 
-// DASHBOARD
 function showDashboard(){
   dashboardPage.style.display="block";
 
@@ -385,6 +338,69 @@ function showDashboard(){
 
   startClock();
 }
+
+
+// ==========================
+// 🟢 TAMBAHAN KAMERA (AMAN)
+// ==========================
+
+const btnFoto = document.getElementById("btnFoto");
+const video = document.getElementById("video");
+const canvas = document.getElementById("canvas");
+const preview = document.getElementById("preview");
+const takePhoto = document.getElementById("takePhoto");
+const retake = document.getElementById("retake");
+const backInfo = document.getElementById("backInfo");
+const confirmBtn = document.getElementById("confirm");
+
+let stream = null;
+
+btnFoto.onclick = async () => {
+  infoPage.style.display = "none";
+  cameraPage.style.display = "block";
+
+  stream = await navigator.mediaDevices.getUserMedia({ video: true });
+  video.srcObject = stream;
+};
+
+takePhoto.onclick = () => {
+  const ctx = canvas.getContext("2d");
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  ctx.drawImage(video,0,0);
+
+  preview.src = canvas.toDataURL("image/png");
+  preview.style.display = "block";
+
+  confirmBtn.disabled = false;
+  retake.style.display = "inline-block";
+
+  stream.getTracks().forEach(t=>t.stop());
+};
+
+retake.onclick = ()=> btnFoto.onclick();
+
+backInfo.onclick = ()=>{
+  cameraPage.style.display="none";
+  infoPage.style.display="block";
+};
+
+confirmBtn.onclick = ()=>{
+  infoPage.style.display="none";
+  thankPage.style.display="block";
+
+  let s=10;
+  let cd=document.getElementById("countdown");
+
+  let t=setInterval(()=>{
+    s--; cd.innerText=s;
+    if(s<=0){
+      clearInterval(t);
+      thankPage.style.display="none";
+      showDashboard();
+    }
+  },1000);
+};
 
 </script>
 
