@@ -1,152 +1,50 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ABSENSI FIX</title>
-
-<style>
-body{
-  background:#0b1a2e;
-  color:white;
-  text-align:center;
-  font-family:Arial;
-}
-.hidden{display:none}
-video{width:90%;border-radius:10px;background:black;}
-button{padding:10px 18px;background:#22c55e;border:none;border-radius:8px;color:white;}
-</style>
+  <title>RFID V9</title>
 </head>
-
 <body>
 
-<div id="scanPage">
-<h2>ABSENSI</h2>
-<p>UID: <span id="uid">-</span></p>
-<button onclick="startScan()">SCAN</button>
-</div>
+<h2>SCAN RFID</h2>
 
-<div id="locationPage" class="hidden">
-<h3>📍 Lokasi</h3>
-<p id="locStatus">...</p>
-</div>
+<input id="uid" placeholder="Scan UID">
+<button onclick="kirim()">SCAN</button>
 
-<div id="cameraPage" class="hidden">
-<h3>📸 Kamera</h3>
-<video id="video" autoplay playsinline></video>
-</div>
-
-<div id="resultPage" class="hidden">
-<h3>✅ BERHASIL</h3>
-<p id="nama"></p>
-<p id="gudang"></p>
-<img id="fotoSelfie" width="120">
-</div>
+<pre id="hasil"></pre>
 
 <script>
+function kirim(){
 
-const URL = "https://script.google.com/macros/s/AKfycbznCmA9JKgrMSklIBvN8y7fpqGJt1jNSNUEu9hfGmCgGV5bMhAQPfzFqaB_leRqLis/exec";
+  let uid = document.getElementById("uid").value;
 
-let stream;
+  let url = "https://script.google.com/macros/s/AKfycbyrlWCsEXuAFpv0qdAw7JLclCjjooQ3MT3wg3LKgT0CxWEa9mBGOw_9QF83mrR3toY/exec?uid=" + encodeURIComponent(uid);
 
-/* NFC */
-async function startScan(){
-  try{
-    const ndef = new NDEFReader();
-    await ndef.scan();
+  fetch(url, {
+    method: "GET",
+    mode: "cors"
+  })
+  .then(res => res.json())
+  .then(data => {
 
-    ndef.onreading = (event)=>{
-      window.uid = event.serialNumber;
+    let tampil = "";
 
-      document.getElementById("uid").innerText = window.uid;
-
-      document.getElementById("scanPage").classList.add("hidden");
-      document.getElementById("locationPage").classList.remove("hidden");
-
-      getLocation();
+    if(data.status === "OK"){
+      tampil += "✅ NAMA   : " + data.nama + "\n";
+      tampil += "📌 JABATAN: " + data.jabatan + "\n";
+      tampil += "🏢 GUDANG : " + data.gudang + "\n";
+    } else {
+      tampil = "❌ " + data.status;
     }
 
-  }catch(e){
-    alert("HP tidak support NFC");
-  }
-}
+    document.getElementById("hasil").innerText = tampil;
 
-/* LOKASI */
-function getLocation(){
-
-navigator.geolocation.getCurrentPosition(async (pos)=>{
-
-  window.lat = pos.coords.latitude;
-  window.lng = pos.coords.longitude;
-
-  document.getElementById("locStatus").innerText="Validasi...";
-
-  let res = await fetch(`${URL}?uid=${window.uid}&lat=${window.lat}&lng=${window.lng}`);
-  let data = await res.json();
-
-  if(data.status==="IN_RANGE"){
-    window.nama = data.nama;
-    window.gudang = data.gudang;
-    openCamera();
-  }else{
-    document.getElementById("locStatus").innerText="Diluar area ❌";
-  }
-
-});
-}
-
-/* KAMERA */
-async function openCamera(){
-
-document.getElementById("locationPage").classList.add("hidden");
-document.getElementById("cameraPage").classList.remove("hidden");
-
-stream = await navigator.mediaDevices.getUserMedia({
-  video:{width:320,height:240}
-});
-
-let video = document.getElementById("video");
-video.srcObject = stream;
-
-setTimeout(()=>takePhoto(video),1500);
-}
-
-/* FOTO */
-function takePhoto(video){
-
-let canvas = document.createElement("canvas");
-canvas.width = 320;
-canvas.height = 240;
-
-let ctx = canvas.getContext("2d");
-ctx.drawImage(video,0,0,320,240);
-
-let foto = canvas.toDataURL("image/jpeg",0.5);
-
-sendData(foto);
-}
-
-/* 🔥 KIRIM DATA FINAL (GET - PASTI MASUK) */
-function sendData(foto){
-
-// 🔥 KIRIM KE APPS SCRIPT
-let url = `${URL}?mode=absen&uid=${window.uid}&lat=${window.lat}&lng=${window.lng}`;
-
-// PANGGIL TANPA MENUNGGU
-fetch(url);
-
-// STOP kamera
-stream.getTracks().forEach(t=>t.stop());
-
-// TAMPILKAN HASIL
-document.getElementById("cameraPage").classList.add("hidden");
-document.getElementById("resultPage").classList.remove("hidden");
-
-document.getElementById("nama").innerText = window.nama;
-document.getElementById("gudang").innerText = window.gudang;
-document.getElementById("fotoSelfie").src = foto;
+  })
+  .catch(err => {
+    document.getElementById("hasil").innerText = "ERROR: " + err;
+  });
 
 }
-
 </script>
+
 </body>
 </html>
