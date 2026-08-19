@@ -15,11 +15,19 @@
     button {
       padding: 15px 25px;
       font-size: 18px;
-      background: green;
       color: white;
       border: none;
       border-radius: 10px;
-      margin-top: 20px;
+      margin-top: 15px;
+    }
+
+    #btnScan {
+      background: green;
+    }
+
+    #btnKirim {
+      background: blue;
+      display: none;
     }
 
     .box {
@@ -36,7 +44,9 @@
 
 <h2>ABSENSI NFC</h2>
 
-<button onclick="scanNFC()">SCAN KARTU</button>
+<button id="btnScan" onclick="scanNFC()">SCAN KARTU</button>
+
+<button id="btnKirim" onclick="kirimData()">KONFIRMASI</button>
 
 <div class="box">
   <p id="status">Status: Menunggu scan...</p>
@@ -46,15 +56,18 @@
 
 <script>
 
+let uidTerscan = "";
+let ndef = null;
+
+// parsing text NFC
 function parseTextRecord(record) {
   const data = new Uint8Array(record.data);
   const textDecoder = new TextDecoder();
-
   const langLength = data[0] & 0x3F;
-
   return textDecoder.decode(data.slice(1 + langLength));
 }
 
+// scan NFC
 async function scanNFC() {
 
   if (!('NDEFReader' in window)) {
@@ -63,15 +76,14 @@ async function scanNFC() {
   }
 
   try {
-    const ndef = new NDEFReader();
+    ndef = new NDEFReader();
     await ndef.scan();
 
-    document.getElementById("status").innerText = "Dekatkan kartu NFC...";
+    document.getElementById("status").innerText = "Tempelkan kartu...";
 
-    ndef.onreading = async (event) => {
+    ndef.onreading = (event) => {
 
       let rawText = "";
-      let uid = "";
 
       for (const record of event.message.records) {
         if (record.recordType === "text") {
@@ -79,42 +91,59 @@ async function scanNFC() {
         }
       }
 
-      // ambil angka saja
-      uid = rawText.replace(/[^0-9]/g, "");
+      uidTerscan = rawText.replace(/[^0-9]/g, "");
 
-      document.getElementById("status").innerText = "RAW: " + rawText;
-
-      if (!uid) {
+      if (!uidTerscan) {
         document.getElementById("uid").innerText = "UID: GAGAL BACA";
+        document.getElementById("status").innerText = "Scan ulang";
         return;
       }
 
-      document.getElementById("uid").innerText = "UID: " + uid;
+      document.getElementById("uid").innerText = "UID: " + uidTerscan;
+      document.getElementById("status").innerText = "Klik KONFIRMASI";
 
-      document.getElementById("status").innerText = "Kirim ke server...";
+      // STOP scan biar tidak double
+      ndef.onreading = null;
 
-      try {
-        let res = await fetch("https://script.google.com/macros/s/AKfycbxQYvZIxsv-KrVS2k3wKtmAtq3iOQuoz2PErPJP764YIvOiKv8lvx8IcFO44-tQc4A/exec", {
-          method: "POST",
-          body: JSON.stringify({
-            uid: uid
-          })
-        });
-
-        let data = await res.json();
-
-        document.getElementById("status").innerText = "Berhasil";
-        document.getElementById("server").innerText = JSON.stringify(data);
-
-      } catch (err) {
-        document.getElementById("status").innerText = "Gagal kirim";
-      }
-
+      document.getElementById("btnKirim").style.display = "block";
     };
 
   } catch (error) {
     alert("Error NFC: " + error);
   }
+}
+
+// kirim ke server
+async function kirimData() {
+
+  if (!uidTerscan) {
+    alert("Belum ada UID");
+    return;
+  }
+
+  document.getElementById("status").innerText = "Kirim ke server...";
+
+  try {
+    let res = await fetch("https://script.google.com/macros/s/AKfycbyrlWCsEXuAFpv0qdAw7JLclCjjooQ3MT3wg3LKgT0CxWEa9mBGOw_9QF83mrR3toY/exec?uid=" + uidTerscan);
+
+    let data = await res.json();
+
+    if (data.status === "OK") {
+      document.getElementById("server").innerText =
+        "Nama: " + data.nama + "\nStatus: " + data.aksi;
+
+      document.getElementById("status").innerText = "Berhasil";
+    } else {
+      document.getElementById("status").innerText = "Gagal: " + data.message;
+    }
+
+  } catch (err) {
+    document.getElementById("status").innerText = "Gagal koneksi";
+  }
+
+  // reset
+  uidTerscan = "";
+  document.getElementById("btnKirim").style.display = "none";
 }
 
 </script>
