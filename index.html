@@ -38,19 +38,14 @@ button {
   width:80%;
 }
 
-#infoPage,#thankPage,#warningPage {
+#infoPage,#thankPage,#warningPage,#dashboardPage {
   display:none;
   margin:10px;
   padding:10px;
   border-radius:10px;
 }
 
-#infoPage {
-  background:white;
-  color:black;
-}
-
-#thankPage {
+#infoPage,#thankPage,#dashboardPage {
   background:white;
   color:black;
 }
@@ -123,6 +118,23 @@ video,img {
 <p>Menutup dalam <span id="warningCountdown">5</span> detik...</p>
 </div>
 
+<!-- DASHBOARD -->
+<div id="dashboardPage">
+
+  <div style="display:flex; justify-content:space-between;">
+    <h3>Dashboard</h3>
+    <div style="font-size:24px;">👤</div>
+  </div>
+
+  <hr>
+
+  <div>Nama : <span id="dashNama">-</span></div>
+  <div>UID : <span id="dashUID">-</span></div>
+
+  <p>Riwayat & data pribadi akan tampil di sini</p>
+
+</div>
+
 <script>
 
 // ===== ELEMENT =====
@@ -135,12 +147,16 @@ const mainPage = document.getElementById("mainPage");
 const infoPage = document.getElementById("infoPage");
 const thankPage = document.getElementById("thankPage");
 const warningPage = document.getElementById("warningPage");
+const dashboardPage = document.getElementById("dashboardPage");
 
 const nama = document.getElementById("nama");
 const tanggal = document.getElementById("tanggal");
 const waktu = document.getElementById("waktu");
 const lokasi = document.getElementById("lokasi");
 const statusAbsensi = document.getElementById("statusAbsensi");
+
+const dashNama = document.getElementById("dashNama");
+const dashUID = document.getElementById("dashUID");
 
 const jarak = document.getElementById("jarak");
 const akurasi = document.getElementById("akurasi");
@@ -218,24 +234,19 @@ btnAbsen.onclick=()=>{
         text.innerText = data.pesan || "DITOLAK";
       }
 
-      // countdown 5 detik
       let sisa = 5;
       const cd = document.getElementById("warningCountdown");
-      cd.innerText = sisa;
 
       const timer = setInterval(()=>{
         sisa--;
         cd.innerText = sisa;
 
-        if(sisa <= 2){
-          cd.style.color = "yellow";
-        }
-
         if(sisa <= 0){
           clearInterval(timer);
-          window.close();
-        }
 
+          warningPage.style.display="none";
+          showDashboard();
+        }
       },1000);
 
       return;
@@ -289,23 +300,34 @@ confirmBtn.onclick = () => {
   let sisa = 10;
   const cd = document.getElementById("countdown");
 
-  cd.innerText = sisa;
-
   const timer = setInterval(()=>{
     sisa--;
     cd.innerText = sisa;
 
-    if(sisa <= 3){
-      cd.style.color = "red";
-    }
-
     if(sisa <= 0){
       clearInterval(timer);
-      window.close();
-    }
 
+      thankPage.style.display="none";
+      showDashboard();
+    }
   },1000);
 };
+
+// ===== DASHBOARD FUNCTION =====
+function showDashboard(){
+
+  dashboardPage.style.display="block";
+
+  fetch(`${URL}?uid=${UID}`)
+  .then(r=>r.json())
+  .then(data=>{
+    if(data.status === "OK"){
+      dashNama.innerText = data.nama;
+      dashUID.innerText = UID;
+    }
+  });
+
+}
 
 </script>
 
