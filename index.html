@@ -51,7 +51,7 @@
     <button id="btnAbsen" disabled>ABSEN</button>
   </div>
 
-  <!-- STEP FOTO + INFORMASI -->
+  <!-- STEP FOTO -->
   <div id="stepFoto" style="display:none;">
 
     <div class="status">Konfirmasi Absensi</div>
@@ -65,6 +65,7 @@
     <img id="preview" style="display:none;"/>
 
     <button id="btnFoto">📸 Ambil Foto</button>
+    <button id="btnUlang" style="display:none;">🔁 Ulangi Foto</button>
     <button id="btnKirim" disabled>KONFIRMASI</button>
 
   </div>
@@ -75,7 +76,6 @@
 
     <div class="row"><div class="label">Nama</div><div class="titik">:</div><div class="value" id="nama">-</div></div>
     <div class="row"><div class="label">Gudang</div><div class="titik">:</div><div class="value" id="gudang">-</div></div>
-
   </div>
 
 </div>
@@ -96,7 +96,7 @@ let currentLng = "";
 let fotoReady = false;
 let stream = null;
 
-// ===== JARAK =====
+// ===== HITUNG JARAK =====
 function hitungJarak(lat1, lon1, lat2, lon2) {
   const R = 6371000;
   const dLat = (lat2 - lat1) * Math.PI/180;
@@ -131,7 +131,7 @@ navigator.geolocation.watchPosition(pos => {
 
 });
 
-// ===== KLIK ABSEN =====
+// ===== ABSEN =====
 document.getElementById("btnAbsen").onclick = async function(){
 
   document.getElementById("ready").style.display = "none";
@@ -143,7 +143,6 @@ document.getElementById("btnAbsen").onclick = async function(){
   document.getElementById("jam").innerText = now.toLocaleTimeString("id-ID");
   document.getElementById("gps").innerText = currentLat + ", " + currentLng;
 
-  // nyalakan kamera
   stream = await navigator.mediaDevices.getUserMedia({ video: true });
   document.getElementById("camera").srcObject = stream;
 };
@@ -165,11 +164,39 @@ document.getElementById("btnFoto").onclick = function(){
   document.getElementById("preview").src = img;
   document.getElementById("preview").style.display = "block";
 
+  // 🔥 MATIKAN KAMERA
+  if (stream) {
+    stream.getTracks().forEach(track => track.stop());
+  }
+
+  video.style.display = "none";
+
   fotoReady = true;
+
+  document.getElementById("btnUlang").style.display = "block";
 
   let btn = document.getElementById("btnKirim");
   btn.disabled = false;
   btn.classList.add("active");
+};
+
+// ===== ULANG FOTO =====
+document.getElementById("btnUlang").onclick = async function(){
+
+  const video = document.getElementById("camera");
+  const preview = document.getElementById("preview");
+
+  preview.style.display = "none";
+  video.style.display = "block";
+
+  let btn = document.getElementById("btnKirim");
+  btn.disabled = true;
+  btn.classList.remove("active");
+
+  fotoReady = false;
+
+  stream = await navigator.mediaDevices.getUserMedia({ video: true });
+  video.srcObject = stream;
 };
 
 // ===== KONFIRMASI =====
