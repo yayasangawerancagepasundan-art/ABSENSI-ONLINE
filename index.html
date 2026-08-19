@@ -21,12 +21,8 @@
       box-shadow: 0 5px 15px rgba(0,0,0,0.1);
     }
 
-    h2 {
-      margin-bottom: 10px;
-    }
-
     .status {
-      font-size: 22px;
+      font-size: 20px;
       font-weight: bold;
       margin: 10px 0;
     }
@@ -39,30 +35,12 @@
       display: flex;
       justify-content: space-between;
       margin: 6px 0;
-      font-size: 16px;
     }
 
-    .label {
-      text-align: left;
-      width: 40%;
-      font-weight: bold;
-    }
+    .label { width: 40%; text-align: left; font-weight: bold; }
+    .value { width: 60%; text-align: left; }
 
-    .value {
-      text-align: left;
-      width: 60%;
-    }
-
-    .camera {
-      margin-top: 15px;
-    }
-
-    video, canvas {
-      width: 100%;
-      border-radius: 10px;
-      margin-top: 10px;
-    }
-
+    video { width: 100%; border-radius: 10px; margin-top: 10px; }
     button {
       margin-top: 10px;
       padding: 10px;
@@ -71,7 +49,6 @@
       border-radius: 10px;
       background: #007bff;
       color: white;
-      font-size: 16px;
     }
 
   </style>
@@ -80,123 +57,136 @@
 <body>
 
 <div class="card">
-
   <h2>ABSENSI</h2>
 
   <div id="status" class="status">Memproses...</div>
 
-  <div class="row">
-    <div class="label">Nama</div>
-    <div class="value" id="nama">-</div>
-  </div>
+  <div class="row"><div class="label">Nama</div><div id="nama" class="value">-</div></div>
+  <div class="row"><div class="label">Tanggal</div><div id="tanggal" class="value">-</div></div>
+  <div class="row"><div class="label">Jam</div><div id="jam" class="value">-</div></div>
+  <div class="row"><div class="label">Gudang</div><div id="gudang" class="value">-</div></div>
+  <div class="row"><div class="label">Jarak</div><div id="jarak" class="value">-</div></div>
 
-  <div class="row">
-    <div class="label">Tanggal</div>
-    <div class="value" id="tanggal">-</div>
-  </div>
-
-  <div class="row">
-    <div class="label">Jam</div>
-    <div class="value" id="jam">-</div>
-  </div>
-
-  <div class="row">
-    <div class="label">Gudang</div>
-    <div class="value" id="gudang">-</div>
-  </div>
-
-  <!-- CAMERA -->
-  <div class="camera">
-    <video id="video" autoplay></video>
-    <button onclick="ambilFoto()">Ambil Foto</button>
-    <canvas id="canvas" style="display:none;"></canvas>
-  </div>
+  <video id="video" autoplay></video>
+  <button onclick="ambilFoto()">Ambil Foto</button>
 
 </div>
 
 <script>
 
+// ===== PARAM UID =====
 const params = new URLSearchParams(window.location.search);
 const uid = params.get("uid");
 
-const statusEl = document.getElementById("status");
+// ===== LOKASI KANTOR =====
+const kantorLat = -0.123456;
+const kantorLng = 104.123456;
+const radiusMax = 100; // meter
 
-if(!uid){
-  statusEl.innerHTML = "<span class='error'>UID tidak ditemukan</span>";
-}else{
-  kirim(uid);
+// ===== HITUNG JARAK =====
+function hitungJarak(lat1, lon1, lat2, lon2) {
+  const R = 6371000;
+  const dLat = (lat2 - lat1) * Math.PI/180;
+  const dLon = (lon2 - lon1) * Math.PI/180;
+
+  const a = Math.sin(dLat/2)*Math.sin(dLat/2) +
+    Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180) *
+    Math.sin(dLon/2)*Math.sin(dLon/2);
+
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c;
 }
 
-// =======================
-// KIRIM KE SERVER
-// =======================
-async function kirim(uid){
+// ===== START =====
+if(!uid){
+  document.getElementById("status").innerHTML = "<span class='error'>UID tidak ada</span>";
+}else{
+  ambilLokasi();
+}
 
-  try {
+// ===== AMBIL LOKASI =====
+function ambilLokasi(){
 
-    let res = await fetch("https://script.google.com/macros/s/AKfycbxwlXN-GC8cavD_8z4k6x-m6-cItZVP2F8P8jkgEuU5N0L3oO3ToZLt0VAaL8xiGhg/exec?uid=" + uid);
+  navigator.geolocation.getCurrentPosition(async function(pos){
 
-    let data = await res.json();
+    let lat = pos.coords.latitude;
+    let lng = pos.coords.longitude;
 
-    if(data.status === "OK"){
+    let jarak = hitungJarak(lat, lng, kantorLat, kantorLng);
 
-      let warna = (data.aksi === "MASUK") ? "success" : "keluar";
+    document.getElementById("jarak").innerText = Math.round(jarak) + " m";
 
-      statusEl.innerHTML = "<span class='"+warna+"'>ABSEN " + data.aksi + "</span>";
-
-      document.getElementById("nama").innerText = data.nama;
-      document.getElementById("gudang").innerText = data.gudang;
-
-      let now = new Date();
-
-      document.getElementById("tanggal").innerText =
-        now.toLocaleDateString("id-ID");
-
-      document.getElementById("jam").innerText =
-        now.toLocaleTimeString("id-ID");
-
-    } else {
-      statusEl.innerHTML = "<span class='error'>Tidak terdaftar</span>";
+    if(jarak > radiusMax){
+      document.getElementById("status").innerHTML =
+        "<span class='error'>Diluar area</span>";
+      return;
     }
 
-  } catch (err){
-    statusEl.innerHTML = "<span class='error'>Server error</span>";
-  }
+    kirim(uid, lat, lng, jarak);
 
+  }, function(){
+    document.getElementById("status").innerText = "Izin lokasi ditolak";
+  });
 }
 
-// =======================
-// CAMERA
-// =======================
+// ===== CAMERA =====
 const video = document.getElementById("video");
 
 navigator.mediaDevices.getUserMedia({ video: true })
-.then(stream => {
-  video.srcObject = stream;
-});
+.then(stream => video.srcObject = stream);
 
-// ambil foto
+let fotoBase64 = "";
+
 function ambilFoto(){
-  const canvas = document.getElementById("canvas");
-  const ctx = canvas.getContext("2d");
-
+  const canvas = document.createElement("canvas");
   canvas.width = video.videoWidth;
   canvas.height = video.videoHeight;
 
-  ctx.drawImage(video, 0, 0);
+  canvas.getContext("2d").drawImage(video,0,0);
 
-  let image = canvas.toDataURL("image/png");
+  fotoBase64 = canvas.toDataURL("image/jpeg");
 
-  console.log("FOTO:", image);
-
-  alert("Foto berhasil diambil (nanti bisa kirim ke server)");
+  kirim(uid);
 }
 
-// =======================
-// AUTO RESET 10 DETIK
-// =======================
+// ===== KIRIM DATA =====
+async function kirim(uid, lat="", lng="", jarak=""){
+
+  document.getElementById("status").innerText = "Kirim data...";
+
+  let url = "https://script.google.com/macros/s/AKfycbxwlXN-GC8cavD_8z4k6x-m6-cItZVP2F8P8jkgEuU5N0L3oO3ToZLt0VAaL8xiGhg/exec";
+
+  url += "?uid=" + uid +
+         "&lat=" + lat +
+         "&lng=" + lng +
+         "&jarak=" + jarak +
+         "&foto=" + encodeURIComponent(fotoBase64);
+
+  let res = await fetch(url);
+  let data = await res.json();
+
+  if(data.status === "OK"){
+
+    let warna = (data.aksi === "MASUK") ? "success" : "keluar";
+
+    document.getElementById("status").innerHTML =
+      "<span class='"+warna+"'>ABSEN " + data.aksi + "</span>";
+
+    document.getElementById("nama").innerText = data.nama;
+    document.getElementById("gudang").innerText = data.gudang;
+
+    let now = new Date();
+    document.getElementById("tanggal").innerText = now.toLocaleDateString("id-ID");
+    document.getElementById("jam").innerText = now.toLocaleTimeString("id-ID");
+
+  } else {
+    document.getElementById("status").innerText = data.message;
+  }
+}
+
+// ===== AUTO RESET =====
 setTimeout(() => {
-  window.location.href = "https://yayasangawerancagepasundan-art.github.io/ABSENSI-ONLINE/";
+  window.location.href = window.location.pathname;
 }, 10000);
 
 </script>
