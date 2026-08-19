@@ -5,57 +5,78 @@
 <title>ABSENSI</title>
 
 <style>
-body {
+body{
   background:black;
   color:#00ff66;
   font-family:monospace;
   text-align:center;
 }
 
-.location-icon {
+/* MAIN */
+.location-icon{
   font-size:80px;
-  margin:20px 0;
+  margin:20px;
 }
 
-.progress-container {
+.progress-container{
   width:80%;
   height:20px;
   background:#222;
-  margin:10px auto;
   border-radius:10px;
-  overflow:hidden;
+  margin:10px auto;
 }
-.progress-bar {
+
+.progress-bar{
   height:100%;
   width:0%;
   background:lime;
-  transition:width 0.3s;
 }
 
-button {
-  margin-top:10px;
-  padding:10px;
+button{
   width:80%;
+  padding:10px;
+  margin-top:10px;
 }
 
-#infoPage,#thankPage,#warningPage,#dashboardPage {
+/* PAGE */
+#infoPage,#thankPage,#warningPage,#dashboardPage{
   display:none;
   margin:10px;
   padding:10px;
   border-radius:10px;
 }
 
-#infoPage,#thankPage,#dashboardPage {
+#infoPage,#thankPage,#dashboardPage{
   background:white;
   color:black;
 }
 
-#warningPage {
+#warningPage{
   background:black;
   color:red;
 }
 
-video,img {
+/* DASHBOARD */
+.rowBox{
+  display:flex;
+  justify-content:space-between;
+  background:white;
+  padding:12px;
+  border-radius:8px;
+  margin-bottom:10px;
+  border:1px solid #ccc;
+}
+
+.label{
+  font-weight:bold;
+}
+
+.value{
+  font-size:18px;
+}
+
+/* CAMERA */
+video,img{
   width:100%;
   max-width:300px;
   border-radius:10px;
@@ -70,7 +91,6 @@ video,img {
 <!-- MAIN -->
 <div id="mainPage">
   <div class="location-icon">📍</div>
-
   <div id="status">MENCARI LOKASI...</div>
   <div>Jarak: <span id="jarak">-</span></div>
   <div>Akurasi: <span id="akurasi">-</span></div>
@@ -85,16 +105,16 @@ video,img {
 <!-- INFO -->
 <div id="infoPage">
 <h3>INFORMASI</h3>
-<div>Nama : <span id="nama"></span></div>
-<div>Tanggal : <span id="tanggal"></span></div>
-<div>Waktu : <span id="waktu"></span></div>
-<div>Lokasi : <span id="lokasi"></span></div>
-<div>Status : <span id="statusAbsensi"></span></div>
+
+<div>Nama: <span id="nama"></span></div>
+<div>Tanggal: <span id="tanggal"></span></div>
+<div>Waktu: <span id="waktu"></span></div>
+<div>Lokasi: <span id="lokasi"></span></div>
+<div>Status: <span id="statusAbsensi"></span></div>
 
 <hr>
 
 <h3>SELFIE WAJIB</h3>
-
 <video id="video" autoplay></video>
 <canvas id="canvas" style="display:none;"></canvas>
 <img id="preview" style="display:none;">
@@ -104,18 +124,17 @@ video,img {
 <button id="confirm" disabled>KONFIRMASI</button>
 </div>
 
+<!-- WARNING -->
+<div id="warningPage">
+<h1>⚠️</h1>
+<h2 id="warningText"></h2>
+<p>Menutup dalam <span id="warningCountdown">5</span> detik</p>
+</div>
+
 <!-- THANK -->
 <div id="thankPage">
 <h2>TERIMAKASIH</h2>
-<p>Absensi berhasil</p>
-<p>Menutup dalam <span id="countdown">10</span> detik...</p>
-</div>
-
-<!-- WARNING -->
-<div id="warningPage">
-<h1 style="font-size:60px;">⚠️</h1>
-<h2 id="warningText">WARNING</h2>
-<p>Menutup dalam <span id="warningCountdown">5</span> detik...</p>
+<p>Menutup dalam <span id="countdown">10</span> detik</p>
 </div>
 
 <!-- DASHBOARD -->
@@ -123,63 +142,55 @@ video,img {
 
   <div style="display:flex; justify-content:space-between;">
     <h3>Dashboard</h3>
-    <div style="font-size:24px;">👤</div>
+    <div>👤</div>
   </div>
 
   <hr>
 
-  <div>Nama : <span id="dashNama">-</span></div>
-  <div>UID : <span id="dashUID">-</span></div>
+  <div class="rowBox">
+    <div class="label">👤 Nama</div>
+    <div id="dashNama" class="value">-</div>
+  </div>
 
-  <p>Riwayat & data pribadi akan tampil di sini</p>
+  <div class="rowBox">
+    <div class="label">📅 Total Hari</div>
+    <div id="dashHari" class="value">-</div>
+  </div>
+
+  <div class="rowBox">
+    <div class="label">⏱ Total Jam</div>
+    <div id="dashJam" class="value">-</div>
+  </div>
 
 </div>
 
 <script>
 
-// ===== ELEMENT =====
-const btnAbsen = document.getElementById("btnAbsen");
-const confirmBtn = document.getElementById("confirm");
-const takePhoto = document.getElementById("takePhoto");
-const retake = document.getElementById("retake");
-
-const mainPage = document.getElementById("mainPage");
-const infoPage = document.getElementById("infoPage");
-const thankPage = document.getElementById("thankPage");
-const warningPage = document.getElementById("warningPage");
-const dashboardPage = document.getElementById("dashboardPage");
-
-const nama = document.getElementById("nama");
-const tanggal = document.getElementById("tanggal");
-const waktu = document.getElementById("waktu");
-const lokasi = document.getElementById("lokasi");
-const statusAbsensi = document.getElementById("statusAbsensi");
-
-const dashNama = document.getElementById("dashNama");
-const dashUID = document.getElementById("dashUID");
-
-const jarak = document.getElementById("jarak");
-const akurasi = document.getElementById("akurasi");
-const status = document.getElementById("status");
-const progressBar = document.getElementById("progressBar");
-
-const video = document.getElementById("video");
-const canvas = document.getElementById("canvas");
-const preview = document.getElementById("preview");
-
-// ===== CONFIG =====
-const URL = "https://script.google.com/macros/s/AKfycbxwlXN-GC8cavD_8z4k6x-m6-cItZVP2F8P8jkgEuU5N0L3oO3ToZLt0VAaL8xiGhg/exec";
-const params = new URLSearchParams(window.location.search);
-const UID = params.get("uid") || "";
+// CONFIG
+const URL="https://script.google.com/macros/s/AKfycbxwlXN-GC8cavD_8z4k6x-m6-cItZVP2F8P8jkgEuU5N0L3oO3ToZLt0VAaL8xiGhg/exec";
+const params=new URLSearchParams(location.search);
+const UID=params.get("uid")||"";
 
 // TARGET
-const TARGET_LAT = -6.2341459;
-const TARGET_LNG = 106.4997284;
-const RADIUS = 50;
+const TARGET_LAT=-6.2341459;
+const TARGET_LNG=106.4997284;
+const RADIUS=50;
 
-let lat=0,lng=0,locked=false;
+// ELEMENT
+const btnAbsen=document.getElementById("btnAbsen");
+const progressBar=document.getElementById("progressBar");
 
-// ===== DISTANCE =====
+const jarak=document.getElementById("jarak");
+const akurasi=document.getElementById("akurasi");
+const status=document.getElementById("status");
+
+const mainPage=document.getElementById("mainPage");
+const infoPage=document.getElementById("infoPage");
+const warningPage=document.getElementById("warningPage");
+const thankPage=document.getElementById("thankPage");
+const dashboardPage=document.getElementById("dashboardPage");
+
+// DISTANCE
 function dist(a,b,c,d){
   const R=6371000;
   let dLat=(c-a)*Math.PI/180;
@@ -190,7 +201,9 @@ function dist(a,b,c,d){
   return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));
 }
 
-// ===== GPS =====
+// GPS
+let lat=0,lng=0,locked=false;
+
 navigator.geolocation.watchPosition(p=>{
   lat=p.coords.latitude;
   lng=p.coords.longitude;
@@ -200,50 +213,42 @@ navigator.geolocation.watchPosition(p=>{
   jarak.innerText=Math.round(d)+" m";
   akurasi.innerText="± "+Math.round(p.coords.accuracy)+" m";
 
-  let persen = 100 - (d / RADIUS * 100);
-  persen = Math.max(0, Math.min(100, persen));
-  progressBar.style.width = persen + "%";
+  let persen=100-(d/RADIUS*100);
+  persen=Math.max(0,Math.min(100,persen));
+  progressBar.style.width=persen+"%";
 
-  if(d <= RADIUS){
+  if(d<=RADIUS){
     locked=true;
     status.innerText="LOKASI VALID";
     btnAbsen.disabled=false;
   }
 });
 
-// ===== ABSEN =====
+// ABSEN
 btnAbsen.onclick=()=>{
-  if(!locked) return alert("Belum dalam radius");
-
   fetch(`${URL}?uid=${UID}&lat=${lat}&lng=${lng}`)
   .then(r=>r.json())
   .then(data=>{
 
-    if(data.status !== "OK"){
-
+    if(data.status!="OK"){
       mainPage.style.display="none";
       warningPage.style.display="block";
 
-      const text = document.getElementById("warningText");
+      let txt=document.getElementById("warningText");
 
-      if(data.pesan && data.pesan.includes("3 jam")){
-        text.innerText = "BELUM 3 JAM (TIDAK BISA KELUAR)";
-      }else if(data.pesan && data.pesan.includes("10 menit")){
-        text.innerText = "BELUM 10 MENIT (TIDAK BISA MASUK)";
+      if(data.pesan?.includes("3")){
+        txt.innerText="BELUM 3 JAM";
       }else{
-        text.innerText = data.pesan || "DITOLAK";
+        txt.innerText="BELUM 10 MENIT";
       }
 
-      let sisa = 5;
-      const cd = document.getElementById("warningCountdown");
+      let s=5;
+      let cd=document.getElementById("warningCountdown");
 
-      const timer = setInterval(()=>{
-        sisa--;
-        cd.innerText = sisa;
-
-        if(sisa <= 0){
-          clearInterval(timer);
-
+      let t=setInterval(()=>{
+        s--; cd.innerText=s;
+        if(s<=0){
+          clearInterval(t);
           warningPage.style.display="none";
           showDashboard();
         }
@@ -255,22 +260,21 @@ btnAbsen.onclick=()=>{
     mainPage.style.display="none";
     infoPage.style.display="block";
 
-    nama.innerText = data.nama;
-    lokasi.innerText = data.gudang;
-    statusAbsensi.innerText = data.aksi;
+    document.getElementById("nama").innerText=data.nama;
+    document.getElementById("lokasi").innerText=data.gudang;
+    document.getElementById("statusAbsensi").innerText=data.aksi;
 
-    let now = new Date();
-    tanggal.innerText = now.toLocaleDateString();
-    waktu.innerText = now.toLocaleTimeString();
+    let now=new Date();
+    document.getElementById("tanggal").innerText=now.toLocaleDateString();
+    document.getElementById("waktu").innerText=now.toLocaleTimeString();
 
   });
 };
 
-// ===== CAMERA =====
+// CAMERA
 navigator.mediaDevices.getUserMedia({video:true})
 .then(s=>video.srcObject=s);
 
-// FOTO
 takePhoto.onclick=()=>{
   canvas.width=video.videoWidth;
   canvas.height=video.videoHeight;
@@ -280,53 +284,46 @@ takePhoto.onclick=()=>{
   preview.style.display="block";
   video.style.display="none";
 
-  confirmBtn.disabled=false;
+  confirm.disabled=false;
   retake.style.display="inline-block";
 };
 
-// ULANG
 retake.onclick=()=>{
   preview.style.display="none";
   video.style.display="block";
-  confirmBtn.disabled=true;
+  confirm.disabled=true;
 };
 
-// ===== KONFIRMASI =====
-confirmBtn.onclick = () => {
-
+confirm.onclick=()=>{
   infoPage.style.display="none";
   thankPage.style.display="block";
 
-  let sisa = 10;
-  const cd = document.getElementById("countdown");
+  let s=10;
+  let cd=document.getElementById("countdown");
 
-  const timer = setInterval(()=>{
-    sisa--;
-    cd.innerText = sisa;
-
-    if(sisa <= 0){
-      clearInterval(timer);
-
+  let t=setInterval(()=>{
+    s--; cd.innerText=s;
+    if(s<=0){
+      clearInterval(t);
       thankPage.style.display="none";
       showDashboard();
     }
   },1000);
 };
 
-// ===== DASHBOARD FUNCTION =====
+// DASHBOARD
 function showDashboard(){
-
   dashboardPage.style.display="block";
 
-  fetch(`${URL}?uid=${UID}`)
+  fetch(`${URL}?mode=dashboard&uid=${UID}`)
   .then(r=>r.json())
-  .then(data=>{
-    if(data.status === "OK"){
-      dashNama.innerText = data.nama;
-      dashUID.innerText = UID;
+  .then(d=>{
+    if(d.status=="OK"){
+      document.getElementById("dashNama").innerText=d.nama;
+      document.getElementById("dashHari").innerText=d.totalHari;
+      document.getElementById("dashJam").innerText=d.totalJam+" Jam";
     }
   });
-
 }
 
 </script>
