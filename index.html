@@ -2,7 +2,8 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ABSENSI</title>
+
+<title>Absensi</title>
 
 <style>
 body{
@@ -42,7 +43,7 @@ body{
 }
 
 button{
-  padding:12px 20px;
+  padding:10px 18px;
   background:#22c55e;
   border:none;
   border-radius:8px;
@@ -54,47 +55,49 @@ video{
   border-radius:10px;
 }
 </style>
+
 </head>
 
 <body>
 
 <!-- SCAN -->
 <div id="scanPage">
-  <h2>ABSENSI</h2>
-  <p>UID: <span id="uid">-</span></p>
-  <button onclick="startScan()">SCAN KARTU</button>
-  <p id="status">Menunggu...</p>
+<h2>ABSENSI</h2>
+<p>UID: <span id="uid">-</span></p>
+<button onclick="startScan()">SCAN KARTU</button>
+<p id="status">Menunggu...</p>
 </div>
 
 <!-- LOKASI -->
 <div id="locationPage" class="hidden">
-  <h3>📍 Cek Lokasi</h3>
-  <div class="radar-box">
-    <div class="radar-line"></div>
-  </div>
-  <p id="locStatus">Mengambil lokasi...</p>
-  <p id="jarak"></p>
+<h3>📍 Cek Lokasi</h3>
+
+<div class="radar-box">
+  <div class="radar-line"></div>
+</div>
+
+<p id="locStatus">Mengambil lokasi...</p>
+<p id="jarak">-</p>
 </div>
 
 <!-- KAMERA -->
 <div id="cameraPage" class="hidden">
-  <h3>📸 Kamera</h3>
-  <video id="video" autoplay playsinline></video>
-  <p id="camStatus">Mengambil foto...</p>
+<h3>📸 Kamera</h3>
+<video id="video" autoplay playsinline></video>
+<p id="camStatus">Mengambil foto...</p>
 </div>
 
 <!-- RESULT -->
 <div id="resultPage" class="hidden">
-  <h3>✅ Berhasil</h3>
-  <p id="nama"></p>
-  <p id="gudang"></p>
+<h3>✅ Berhasil</h3>
+<p id="nama"></p>
+<p id="gudang"></p>
 </div>
 
 <script>
 
-const URL = "https://script.google.com/macros/s/AKfycbznCmA9JKgrMSklIBvN8y7fpqGJt1jNSNUEu9hfGmCgGV5bMhAQPfzFqaB_leRqLis/exec";
-
 let stream;
+const URL = "https://script.google.com/macros/s/AKfycbznCmA9JKgrMSklIBvN8y7fpqGJt1jNSNUEu9hfGmCgGV5bMhAQPfzFqaB_leRqLis/exec";
 
 /* ================= NFC ================= */
 async function startScan(){
@@ -139,18 +142,18 @@ navigator.geolocation.getCurrentPosition(async (pos)=>{
     let res = await fetch(`${URL}?uid=${window.uid}&lat=${lat}&lng=${lng}`);
     let data = await res.json();
 
-    console.log("RESP LOKASI:", data);
-
     document.getElementById("jarak").innerText="Jarak: "+Math.round(data.jarak)+" m";
 
-    if(data.status === "IN_RANGE"){
+    if(data.status==="IN_RANGE"){
 
       window.nama = data.nama;
       window.gudang = data.gudang;
 
       document.getElementById("locStatus").innerText="Dalam area";
 
-      setTimeout(openCamera,1000);
+      setTimeout(()=>{
+        openCamera();
+      },1000);
 
     }else{
       document.getElementById("locStatus").innerText="Diluar area ❌";
@@ -165,6 +168,7 @@ navigator.geolocation.getCurrentPosition(async (pos)=>{
 }
 
 /* ================= KAMERA ================= */
+/* 🔥 INI YANG DIPERBAIKI */
 async function openCamera(){
 
 document.getElementById("locationPage").classList.add("hidden");
@@ -175,6 +179,7 @@ stream = await navigator.mediaDevices.getUserMedia({video:true});
 let video = document.getElementById("video");
 video.srcObject = stream;
 
+// 🔥 FIX: tunggu video siap
 video.onloadedmetadata = ()=>{
   video.play();
 
@@ -186,19 +191,22 @@ video.onloadedmetadata = ()=>{
 }
 
 /* ================= FOTO ================= */
+/* 🔥 INI JUGA DIPERBAIKI */
 function takePhoto(video){
 
 let canvas = document.createElement("canvas");
 
-canvas.width = video.videoWidth || 640;
-canvas.height = video.videoHeight || 480;
+// 🔥 FIX: kecilkan ukuran
+canvas.width = 320;
+canvas.height = 240;
 
 let ctx = canvas.getContext("2d");
-ctx.drawImage(video,0,0,canvas.width,canvas.height);
+ctx.drawImage(video,0,0,320,240);
 
-let foto = canvas.toDataURL("image/jpeg",0.7);
+// 🔥 FIX: compress
+let foto = canvas.toDataURL("image/jpeg",0.4);
 
-console.log("FOTO DIAMBIL");
+console.log("FOTO SIZE:", foto.length);
 
 sendData(foto);
 
@@ -206,8 +214,6 @@ sendData(foto);
 
 /* ================= KIRIM ================= */
 async function sendData(foto){
-
-console.log("KIRIM DATA...");
 
 try{
 
@@ -226,14 +232,11 @@ let res = await fetch(URL,{
   })
 });
 
-let text = await res.text();
-console.log("RESP SERVER:", text);
-
-let data = JSON.parse(text);
+let data = await res.json();
 
 stream.getTracks().forEach(t=>t.stop());
 
-if(data.status === "SUCCESS"){
+if(data.status==="SUCCESS"){
 
   document.getElementById("cameraPage").classList.add("hidden");
   document.getElementById("resultPage").classList.remove("hidden");
@@ -242,7 +245,7 @@ if(data.status === "SUCCESS"){
   document.getElementById("gudang").innerText = window.gudang;
 
 }else{
-  alert("Server error: "+data.status);
+  alert("Server error");
 }
 
 }catch(e){
