@@ -56,6 +56,24 @@
     button.active {
       background: green;
     }
+
+    /* ===== TAMBAHAN RESULT ===== */
+    .row {
+      display: flex;
+      justify-content: space-between;
+      margin: 6px 0;
+    }
+
+    .label {
+      width: 40%;
+      text-align: left;
+      font-weight: bold;
+    }
+
+    .value {
+      width: 60%;
+      text-align: left;
+    }
   </style>
 </head>
 
@@ -79,6 +97,18 @@
     <button id="btnAbsen" disabled>ABSEN</button>
   </div>
 
+  <!-- STATE 3 (BARU) -->
+  <div id="result" style="display:none;">
+    <div id="statusResult" class="status green"></div>
+
+    <div class="row"><div class="label">Nama</div><div id="nama" class="value">-</div></div>
+    <div class="row"><div class="label">Jam</div><div id="jam" class="value">-</div></div>
+    <div class="row"><div class="label">Tanggal</div><div id="tanggal" class="value">-</div></div>
+    <div class="row"><div class="label">GPS</div><div id="gps" class="value">-</div></div>
+    <div class="row"><div class="label">Gudang</div><div id="gudang" class="value">-</div></div>
+
+  </div>
+
 </div>
 
 <script>
@@ -86,16 +116,15 @@
 // ===== API =====
 const API = "https://script.google.com/macros/s/AKfycbxwlXN-GC8cavD_8z4k6x-m6-cItZVP2F8P8jkgEuU5N0L3oO3ToZLt0VAaL8xiGhg/exec";
 
-// ===== AMBIL UID =====
+// ===== UID =====
 const params = new URLSearchParams(window.location.search);
 const uid = params.get("uid");
 
-// ===== KOORDINAT TARGET =====
+// ===== TARGET =====
 const TARGET_LAT = -6.2341459;
 const TARGET_LNG = 106.4997284;
 const RADIUS = 50;
 
-// ===== VAR GLOBAL =====
 let sudahDalamArea = false;
 let currentLat = "";
 let currentLng = "";
@@ -117,7 +146,7 @@ function hitungJarak(lat1, lon1, lat2, lon2) {
   return R * c;
 }
 
-// ===== GPS TRACKING =====
+// ===== GPS =====
 navigator.geolocation.watchPosition(pos => {
 
   currentLat = pos.coords.latitude;
@@ -125,10 +154,8 @@ navigator.geolocation.watchPosition(pos => {
 
   const jarak = hitungJarak(currentLat, currentLng, TARGET_LAT, TARGET_LNG);
 
-  document.getElementById("jarak").innerText =
-    Math.round(jarak) + " m";
+  document.getElementById("jarak").innerText = Math.round(jarak) + " m";
 
-  // ===== MASUK RADIUS =====
   if (jarak <= RADIUS && !sudahDalamArea) {
 
     sudahDalamArea = true;
@@ -136,50 +163,45 @@ navigator.geolocation.watchPosition(pos => {
     document.getElementById("loading").style.display = "none";
     document.getElementById("ready").style.display = "block";
 
-    document.getElementById("jarak2").innerText =
-      Math.round(jarak) + " m";
+    document.getElementById("jarak2").innerText = Math.round(jarak) + " m";
 
     let btn = document.getElementById("btnAbsen");
     btn.disabled = false;
     btn.classList.add("active");
   }
 
-}, err => {
-  document.querySelector(".status").innerText = "Gagal ambil lokasi";
-},{
-  enableHighAccuracy: true,
-  maximumAge: 0,
-  timeout: 10000
 });
 
 // ===== KLIK ABSEN =====
 document.getElementById("btnAbsen").onclick = async function(){
 
-  if(!uid){
-    alert("UID tidak ada");
-    return;
-  }
-
   this.innerText = "Mengirim...";
   this.disabled = true;
 
-  try{
+  let res = await fetch(API + "?uid=" + uid + "&lat=" + currentLat + "&lng=" + currentLng);
+  let data = await res.json();
 
-    let res = await fetch(API + "?uid=" + uid + "&lat=" + currentLat + "&lng=" + currentLng);
-    let data = await res.json();
+  // pindah ke RESULT
+  document.getElementById("ready").style.display = "none";
+  document.getElementById("result").style.display = "block";
 
-    if(data.status == "OK"){
-      alert("ABSEN " + data.aksi + "\n" + data.nama);
-    } else {
-      alert("Gagal: " + data.status);
-    }
+  if(data.status == "OK"){
 
-  }catch(e){
-    alert("Gagal koneksi");
+    document.getElementById("statusResult").innerText = "ABSEN " + data.aksi;
+
+    document.getElementById("nama").innerText = data.nama;
+    document.getElementById("gudang").innerText = data.gudang;
+
+    document.getElementById("gps").innerText =
+      currentLat.toFixed(6) + ", " + currentLng.toFixed(6);
+
+    const now = new Date();
+    document.getElementById("tanggal").innerText = now.toLocaleDateString("id-ID");
+    document.getElementById("jam").innerText = now.toLocaleTimeString("id-ID");
+
+  } else {
+    document.getElementById("statusResult").innerText = "Gagal";
   }
-
-  this.innerText = "ABSEN";
-  this.disabled = false;
 
 };
 
