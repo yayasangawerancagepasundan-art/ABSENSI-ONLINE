@@ -12,13 +12,13 @@ body {
   text-align:center;
 }
 
-/* ICON POSISI */
+/* ICON */
 .location-icon {
   font-size:80px;
   margin:20px 0;
 }
 
-/* PROGRESS BAR */
+/* PROGRESS */
 .progress-container {
   width:80%;
   height:20px;
@@ -27,7 +27,6 @@ body {
   border-radius:10px;
   overflow:hidden;
 }
-
 .progress-bar {
   height:100%;
   width:0%;
@@ -55,7 +54,6 @@ video,img {
   max-width:300px;
   border-radius:10px;
 }
-
 </style>
 </head>
 
@@ -65,11 +63,9 @@ video,img {
 
 <!-- MAIN -->
 <div id="mainPage">
-
   <div class="location-icon">📍</div>
 
   <div id="status">MENCARI LOKASI...</div>
-
   <div>Jarak: <span id="jarak">-</span></div>
   <div>Akurasi: <span id="akurasi">-</span></div>
 
@@ -78,12 +74,10 @@ video,img {
   </div>
 
   <button id="btnAbsen" disabled>ABSEN</button>
-
 </div>
 
 <!-- INFO -->
 <div id="infoPage">
-
 <h3>INFORMASI</h3>
 <div>Nama : <span id="nama"></span></div>
 <div>Tanggal : <span id="tanggal"></span></div>
@@ -102,10 +96,9 @@ video,img {
 <button id="takePhoto">AMBIL FOTO</button>
 <button id="retake" style="display:none;">ULANGI</button>
 <button id="confirm" disabled>KONFIRMASI</button>
-
 </div>
 
-<!-- THANK YOU -->
+<!-- THANK -->
 <div id="thankPage">
 <h2>TERIMAKASIH</h2>
 <p>Absensi berhasil</p>
@@ -114,9 +107,33 @@ video,img {
 
 <script>
 
+// ===== ELEMENT BINDING (FIX UTAMA) =====
+const btnAbsen = document.getElementById("btnAbsen");
+const confirmBtn = document.getElementById("confirm");
+const takePhoto = document.getElementById("takePhoto");
+const retake = document.getElementById("retake");
+
+const mainPage = document.getElementById("mainPage");
+const infoPage = document.getElementById("infoPage");
+const thankPage = document.getElementById("thankPage");
+
+const nama = document.getElementById("nama");
+const tanggal = document.getElementById("tanggal");
+const waktu = document.getElementById("waktu");
+const lokasi = document.getElementById("lokasi");
+const statusAbsensi = document.getElementById("statusAbsensi");
+
+const jarak = document.getElementById("jarak");
+const akurasi = document.getElementById("akurasi");
+const status = document.getElementById("status");
+const progressBar = document.getElementById("progressBar");
+
+const video = document.getElementById("video");
+const canvas = document.getElementById("canvas");
+const preview = document.getElementById("preview");
+
 // ===== CONFIG =====
 const URL = "https://script.google.com/macros/s/AKfycbxwlXN-GC8cavD_8z4k6x-m6-cItZVP2F8P8jkgEuU5N0L3oO3ToZLt0VAaL8xiGhg/exec";
-
 const params = new URLSearchParams(window.location.search);
 const UID = params.get("uid") || "";
 
@@ -148,10 +165,8 @@ navigator.geolocation.watchPosition(p=>{
   jarak.innerText=Math.round(d)+" m";
   akurasi.innerText="± "+Math.round(p.coords.accuracy)+" m";
 
-  // ===== PROGRESS BAR =====
   let persen = 100 - (d / RADIUS * 100);
   persen = Math.max(0, Math.min(100, persen));
-
   progressBar.style.width = persen + "%";
 
   if(d <= RADIUS){
@@ -159,12 +174,10 @@ navigator.geolocation.watchPosition(p=>{
     status.innerText="LOKASI VALID";
     btnAbsen.disabled=false;
   }
-
 });
 
 // ===== ABSEN =====
 btnAbsen.onclick=()=>{
-
   if(!locked) return alert("Belum dalam radius");
 
   fetch(`${URL}?uid=${UID}&lat=${lat}&lng=${lng}`)
@@ -188,13 +201,13 @@ btnAbsen.onclick=()=>{
     waktu.innerText = now.toLocaleTimeString();
 
   });
-
 };
 
 // ===== CAMERA =====
 navigator.mediaDevices.getUserMedia({video:true})
 .then(s=>video.srcObject=s);
 
+// FOTO
 takePhoto.onclick=()=>{
   canvas.width=video.videoWidth;
   canvas.height=video.videoHeight;
@@ -204,18 +217,20 @@ takePhoto.onclick=()=>{
   preview.style.display="block";
   video.style.display="none";
 
-  confirm.disabled=false;
+  confirmBtn.disabled=false;
   retake.style.display="inline-block";
 };
 
+// ULANG
 retake.onclick=()=>{
   preview.style.display="none";
   video.style.display="block";
-  confirm.disabled=true;
+  confirmBtn.disabled=true;
 };
 
-// ===== KONFIRMASI =====
-confirm.onclick=()=>{
+// ===== KONFIRMASI (FIX UTAMA) =====
+confirmBtn.onclick = () => {
+
   infoPage.style.display="none";
   thankPage.style.display="block";
 
