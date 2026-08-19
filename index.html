@@ -1,17 +1,6 @@
-<!DOCTYPE html>
-<html>
-<body>
-
-<h2>SCAN NFC</h2>
-
-<button onclick="scanNFC()">SCAN KARTU</button>
-
-<pre id="hasil"></pre>
-
 <script>
 async function scanNFC(){
   try{
-
     const ndef = new NDEFReader();
     await ndef.scan();
 
@@ -19,35 +8,13 @@ async function scanNFC(){
 
     ndef.onreading = event => {
 
-      let uid = event.serialNumber;
+      document.getElementById("hasil").innerText =
+        "SERIAL: " + event.serialNumber;
 
-      document.getElementById("hasil").innerText = "UID: " + uid;
-
-      kirim(uid);
     };
 
   }catch(error){
-    document.getElementById("hasil").innerText = "ERROR NFC: " + error;
+    document.getElementById("hasil").innerText = "ERROR: " + error;
   }
 }
-
-
-function kirim(uid){
-
-  let url = "https://script.google.com/macros/s/AKfycbyrlWCsEXuAFpv0qdAw7JLclCjjooQ3MT3wg3LKgT0CxWEa9mBGOw_9QF83mrR3toY/exec?uid=" + uid;
-
-  fetch(url)
-  .then(res => res.json())
-  .then(data => {
-
-    document.getElementById("hasil").innerText =
-      "UID: " + uid + "\n\n" +
-      JSON.stringify(data, null, 2);
-
-  });
-
-}
 </script>
-
-</body>
-</html>
