@@ -1,266 +1,222 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>ABSENSI</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ABSENSI</title>
 
-  <style>
-    body {
-      background: black;
-      color: #00ff66;
-      font-family: monospace;
-      text-align: center;
-    }
+<style>
+body {
+  background:black;
+  color:#00ff66;
+  font-family:monospace;
+  text-align:center;
+}
 
-    h2 { margin-top: 20px; }
+.radar {
+  width:260px;height:260px;
+  margin:20px auto;
+  border-radius:50%;
+  background:radial-gradient(circle,#001a00,#000);
+  position:relative;
+  overflow:hidden;
+}
 
-    .radar {
-      position: relative;
-      width: 260px;
-      height: 260px;
-      margin: 20px auto;
-      border-radius: 50%;
-      background: radial-gradient(circle, #001a00, #000);
-      box-shadow: 0 0 20px #00ff66 inset;
-      overflow: hidden;
-    }
+.sweep {
+  width:100%;height:100%;
+  position:absolute;
+  background:conic-gradient(rgba(0,255,100,0.4),transparent);
+  animation:spin 2s linear infinite;
+}
 
-    .ring {
-      position: absolute;
-      border: 1px solid rgba(0,255,100,0.3);
-      border-radius: 50%;
-    }
+@keyframes spin {100%{transform:rotate(360deg);}}
 
-    .ring:nth-child(1) { width: 100%; height: 100%; }
-    .ring:nth-child(2) { width: 75%; height: 75%; top: 12.5%; left: 12.5%; }
-    .ring:nth-child(3) { width: 50%; height: 50%; top: 25%; left: 25%; }
-    .ring:nth-child(4) { width: 25%; height: 25%; top: 37.5%; left: 37.5%; }
+.target {
+  width:10px;height:10px;
+  background:red;border-radius:50%;
+  position:absolute;
+}
 
-    .sweep {
-      position: absolute;
-      width: 100%;
-      height: 100%;
-      background: conic-gradient(rgba(0,255,100,0.4), transparent 60%);
-      animation: spin 2s linear infinite;
-    }
+.crosshair {
+  width:30px;height:30px;
+  border:2px solid #00ff66;
+  position:absolute;
+  top:50%;left:50%;
+  transform:translate(-50%,-50%);
+  display:none;
+}
 
-    @keyframes spin {
-      100% { transform: rotate(360deg); }
-    }
+button {
+  margin-top:10px;
+  padding:10px;
+  width:80%;
+}
 
-    .center {
-      position: absolute;
-      width: 10px;
-      height: 10px;
-      background: #00ff66;
-      border-radius: 50%;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-    }
+#infoPage,#thankPage {display:none;background:white;color:black;margin:10px;padding:10px;border-radius:10px;}
 
-    .target {
-      position: absolute;
-      width: 10px;
-      height: 10px;
-      background: red;
-      border-radius: 50%;
-      transition: 0.2s linear;
-    }
+video,img {width:100%;max-width:300px;border-radius:10px;}
 
-    .crosshair {
-      position: absolute;
-      width: 30px;
-      height: 30px;
-      border: 2px solid #00ff66;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      display: none;
-    }
-
-    .crosshair::before,
-    .crosshair::after {
-      content: "";
-      position: absolute;
-      background: #00ff66;
-    }
-
-    .crosshair::before {
-      width: 2px;
-      height: 100%;
-      left: 50%;
-      transform: translateX(-50%);
-    }
-
-    .crosshair::after {
-      height: 2px;
-      width: 100%;
-      top: 50%;
-      transform: translateY(-50%);
-    }
-
-    .status { font-size: 18px; margin-top: 10px; }
-    .lock { color: lime; font-weight: bold; }
-    .error { color: red; }
-
-    button {
-      margin-top: 15px;
-      padding: 12px;
-      width: 80%;
-      font-size: 18px;
-      background: #003300;
-      color: #00ff66;
-      border: 1px solid #00ff66;
-      border-radius: 8px;
-      position: relative;
-      z-index: 10;
-    }
-
-    button.active {
-      background: #00aa00;
-      color: white;
-    }
-
-  </style>
+</style>
 </head>
 
 <body>
 
 <h2>ABSENSI</h2>
 
+<!-- MAIN -->
+<div id="mainPage">
 <div class="radar">
   <div class="sweep"></div>
-
-  <div class="ring"></div>
-  <div class="ring"></div>
-  <div class="ring"></div>
-  <div class="ring"></div>
-
-  <div class="center"></div>
   <div class="target" id="target"></div>
   <div class="crosshair" id="crosshair"></div>
 </div>
 
-<div id="status" class="status">MENCARI TARGET...</div>
-
+<div id="status">MENCARI TARGET...</div>
 <div>Jarak: <span id="jarak">-</span></div>
 <div>Akurasi: <span id="akurasi">-</span></div>
 
 <button id="btnAbsen" disabled>ABSEN</button>
+</div>
+
+<!-- INFO + FOTO -->
+<div id="infoPage">
+
+<h3>INFORMASI</h3>
+<div>Nama : <span id="nama"></span></div>
+<div>Tanggal : <span id="tanggal"></span></div>
+<div>Waktu : <span id="waktu"></span></div>
+<div>Lokasi : <span id="lokasi"></span></div>
+<div>Status : <span id="statusAbsensi"></span></div>
+
+<hr>
+
+<h3>SELFIE WAJIB</h3>
+
+<video id="video" autoplay></video>
+<canvas id="canvas" style="display:none;"></canvas>
+<img id="preview" style="display:none;">
+
+<button id="takePhoto">AMBIL FOTO</button>
+<button id="retake" style="display:none;">ULANGI</button>
+<button id="confirm" disabled>KONFIRMASI</button>
+
+</div>
+
+<!-- THANK YOU -->
+<div id="thankPage">
+<h2>TERIMAKASIH</h2>
+<p>Data berhasil dikirim</p>
+<p>Halaman akan tertutup...</p>
+</div>
 
 <script>
 
-const TARGET_LAT = -6.2341459;
-const TARGET_LNG = 106.4997284;
-const RADIUS = 50;
+const URL="https://script.google.com/macros/s/AKfycbxwlXN-GC8cavD_8z4k6x-m6-cItZVP2F8P8jkgEuU5N0L3oO3ToZLt0VAaL8xiGhg/exec";
 
-let locked = false;
-let firstFix = false;
+const TARGET_LAT=-6.2341459;
+const TARGET_LNG=106.4997284;
+const RADIUS=50;
 
-// ===== HITUNG JARAK =====
-function distance(lat1, lon1, lat2, lon2) {
-  const R = 6371000;
-  const dLat = (lat2-lat1) * Math.PI/180;
-  const dLon = (lon2-lon1) * Math.PI/180;
+let lat=0,lng=0,locked=false,photo="";
 
-  const a = Math.sin(dLat/2)**2 +
-    Math.cos(lat1*Math.PI/180) *
-    Math.cos(lat2*Math.PI/180) *
-    Math.sin(dLon/2)**2;
-
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+// ===== DISTANCE
+function dist(a,b,c,d){
+const R=6371000;
+let dLat=(c-a)*Math.PI/180;
+let dLon=(d-b)*Math.PI/180;
+let x=Math.sin(dLat/2)**2+
+Math.cos(a*Math.PI/180)*Math.cos(c*Math.PI/180)*
+Math.sin(dLon/2)**2;
+return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));
 }
 
-// ===== UPDATE UI =====
-function updateUI(lat, lng, acc) {
+// ===== GPS
+navigator.geolocation.watchPosition(p=>{
+lat=p.coords.latitude;
+lng=p.coords.longitude;
 
-  let d = distance(lat, lng, TARGET_LAT, TARGET_LNG);
+let d=dist(lat,lng,TARGET_LAT,TARGET_LNG);
 
-  document.getElementById("jarak").innerText = Math.round(d) + " m";
-  document.getElementById("akurasi").innerText = "± " + Math.round(acc) + " m";
+jarak.innerText=Math.round(d)+" m";
+akurasi.innerText="± "+Math.round(p.coords.accuracy)+" m";
 
-  let statusEl = document.getElementById("status");
-
-  if (d > RADIUS) {
-    statusEl.innerText = "MENCARI TARGET...";
-    statusEl.className = "status";
-  }
-
-  let dx = TARGET_LNG - lng;
-  let dy = TARGET_LAT - lat;
-
-  let scale = 120000;
-  let x = Math.max(-110, Math.min(110, dx * scale));
-  let y = Math.max(-110, Math.min(110, dy * scale));
-
-  let target = document.getElementById("target");
-  target.style.left = (130 + x) + "px";
-  target.style.top = (130 - y) + "px";
-
-  // ===== LOCK STABIL =====
-  if (d <= RADIUS) {
-
-    locked = true;
-
-    statusEl.innerText = "TARGET LOCK";
-    statusEl.classList.add("lock");
-
-    document.getElementById("crosshair").style.display = "block";
-
-    let btn = document.getElementById("btnAbsen");
-    btn.disabled = false;
-    btn.classList.add("active");
-  }
+if(d<=RADIUS){
+locked=true;
+status.innerText="TARGET LOCK";
+crosshair.style.display="block";
+btnAbsen.disabled=false;
 }
+});
 
-// ===== GET FIRST FIX =====
-navigator.geolocation.getCurrentPosition(
-  pos => {
-    firstFix = true;
-    updateUI(pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy);
-  },
-  err => {
-    document.getElementById("status").innerText = "IZINKAN LOKASI / AKTIFKAN GPS";
-  },
-  { enableHighAccuracy: true, timeout: 10000 }
-);
+// ===== STEP 1: ABSEN
+btnAbsen.onclick=()=>{
 
-// ===== REALTIME =====
-navigator.geolocation.watchPosition(
-  pos => {
-    firstFix = true;
-    updateUI(pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy);
-  },
-  err => {
-    document.getElementById("status").innerText = "GPS ERROR";
-  },
-  { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 }
-);
+if(!locked)return alert("Belum radius");
 
-// ===== FALLBACK =====
-setTimeout(() => {
-  if (!firstFix) {
-    document.getElementById("status").innerText =
-      "MENUNGGU GPS... PINDAH KE LUAR";
-  }
-}, 8000);
+fetch(`${URL}?lat=${lat}&lng=${lng}`)
+.then(r=>r.json())
+.then(data=>{
 
-// ===== TOMBOL ABSEN =====
-document.getElementById("btnAbsen").addEventListener("click", function() {
+mainPage.style.display="none";
+infoPage.style.display="block";
 
-  if (!locked) {
-    alert("Belum dalam radius!");
-    return;
-  }
+nama.innerText=data.nama||"-";
+tanggal.innerText=data.tanggal||"-";
+waktu.innerText=data.waktu||"-";
+lokasi.innerText=data.lokasi||"-";
+statusAbsensi.innerText=data.status||"-";
 
-  // STEP BERIKUTNYA
-  alert("ABSEN BERHASIL - LANJUT STEP");
-
-  // nanti di sini sambung ke:
-  // kamera / kirim server / halaman info
+startCamera();
 
 });
+
+};
+
+// ===== CAMERA
+function startCamera(){
+navigator.mediaDevices.getUserMedia({video:true})
+.then(s=>video.srcObject=s);
+}
+
+// ambil foto
+takePhoto.onclick=()=>{
+canvas.width=video.videoWidth;
+canvas.height=video.videoHeight;
+canvas.getContext("2d").drawImage(video,0,0);
+
+photo=canvas.toDataURL("image/jpeg");
+
+preview.src=photo;
+preview.style.display="block";
+video.style.display="none";
+
+confirm.disabled=false;
+retake.style.display="inline-block";
+};
+
+// ulang
+retake.onclick=()=>{
+preview.style.display="none";
+video.style.display="block";
+confirm.disabled=true;
+};
+
+// ===== STEP FINAL: KIRIM
+confirm.onclick=()=>{
+
+fetch(`${URL}?lat=${lat}&lng=${lng}`)
+.then(()=>{
+
+infoPage.style.display="none";
+thankPage.style.display="block";
+
+// auto close 10 detik
+setTimeout(()=>{
+window.close();
+},10000);
+
+});
+
+};
 
 </script>
 
