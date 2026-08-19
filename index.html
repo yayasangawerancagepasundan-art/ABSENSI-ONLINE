@@ -102,7 +102,7 @@ video,img{
   100%{opacity:0.1;}
 }
 
-/* DASHBOARD STYLE */
+/* DASHBOARD */
 #dashboardPage{
   animation:fadeIn 0.4s ease;
 }
@@ -137,7 +137,6 @@ video,img{
 
   <button id="btnAbsen" disabled>ABSEN</button>
 
-  <!-- LOADER -->
   <div class="loader" id="loader"></div>
 </div>
 
@@ -160,18 +159,6 @@ video,img{
 <button id="confirm" disabled>KONFIRMASI</button>
 </div>
 
-<!-- CAMERA -->
-<div id="cameraPage">
-<h3>AMBIL FOTO</h3>
-
-<video id="video" autoplay></video>
-<canvas id="canvas" style="display:none;"></canvas>
-
-<button id="takePhoto">AMBIL FOTO</button>
-<button id="retake" style="display:none;">ULANGI</button>
-<button id="backInfo">KEMBALI</button>
-</div>
-
 <!-- WARNING -->
 <div id="warningPage">
 <h1>⚠️</h1>
@@ -185,7 +172,7 @@ video,img{
 <p>Menutup dalam <span id="countdown">10</span> detik</p>
 </div>
 
-<!-- DASHBOARD -->
+<!-- DASHBOARD USER -->
 <div id="dashboardPage">
   <h3>Dashboard</h3>
 
@@ -222,11 +209,11 @@ const URL="https://script.google.com/macros/s/AKfycbxwlXN-GC8cavD_8z4k6x-m6-cItZ
 const params=new URLSearchParams(location.search);
 const UID=params.get("uid")||"";
 
-// LOADER GENERATE
+// LOADER
 const loader=document.getElementById("loader");
 for(let i=0;i<12;i++){
   let s=document.createElement("span");
-  s.style.transform=`rotate(${i*30}deg) translate(-50%, -50%)`;
+  s.style.transform=`rotate(${i*30}deg)`;
   s.style.animationDelay=`${i*0.1}s`;
   loader.appendChild(s);
 }
@@ -247,9 +234,7 @@ const status=document.getElementById("status");
 const mainPage=document.getElementById("mainPage");
 const infoPage=document.getElementById("infoPage");
 const warningPage=document.getElementById("warningPage");
-const thankPage=document.getElementById("thankPage");
 const dashboardPage=document.getElementById("dashboardPage");
-const cameraPage=document.getElementById("cameraPage");
 
 // DISTANCE
 function dist(a,b,c,d){
@@ -262,8 +247,8 @@ function dist(a,b,c,d){
   return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));
 }
 
-// GPS
-let lat=0,lng=0,locked=false;
+// GPS (USER ONLY)
+let lat=0,lng=0;
 
 navigator.geolocation.watchPosition(p=>{
   lat=p.coords.latitude;
@@ -279,7 +264,6 @@ navigator.geolocation.watchPosition(p=>{
   progressBar.style.width=persen+"%";
 
   if(d<=RADIUS){
-    locked=true;
     status.innerText="LOKASI VALID";
     btnAbsen.disabled=false;
   }
@@ -308,21 +292,23 @@ btnAbsen.onclick=()=>{
         txt.innerText="BELUM 10 MENIT";
       }
 
-      let s=5;
-      let cd=document.getElementById("warningCountdown");
+      return;
+    }
 
-      let t=setInterval(()=>{
-        s--; cd.innerText=s;
-        if(s<=0){
-          clearInterval(t);
-          warningPage.style.display="none";
-          showDashboard();
-        }
-      },1000);
+    // 🔥 ROLE ROUTING
+    const role = data.role || "User";
+
+    if(role !== "User"){
+      mainPage.style.display="none";
+
+      if(role==="Admin") alert("MASUK ADMIN");
+      else if(role==="Direktur") alert("MASUK DIREKTUR");
+      else if(role==="Teknisi") alert("MASUK TEKNISI");
 
       return;
     }
 
+    // USER FLOW
     mainPage.style.display="none";
     infoPage.style.display="block";
 
@@ -336,55 +322,6 @@ btnAbsen.onclick=()=>{
 
   });
 };
-
-// JAM DASHBOARD
-function startClock(){
-  function update(){
-    let now = new Date();
-
-    let tgl = now.toLocaleDateString('id-ID',{
-      weekday:'long',
-      day:'2-digit',
-      month:'long',
-      year:'numeric'
-    });
-
-    let jam = now.toLocaleTimeString('id-ID',{
-      hour:'2-digit',
-      minute:'2-digit',
-      second:'2-digit',
-      hour12:false
-    });
-
-    document.getElementById("dashTanggal").innerText = tgl;
-    document.getElementById("dashWaktu").innerText = jam;
-  }
-
-  update();
-  setInterval(update,1000);
-
-  setInterval(()=>{
-    let el=document.getElementById("dashWaktu");
-    el.style.opacity = el.style.opacity == "0.5" ? "1" : "0.5";
-  },1000);
-}
-
-// DASHBOARD
-function showDashboard(){
-  dashboardPage.style.display="block";
-
-  fetch(`${URL}?mode=dashboard&uid=${UID}`)
-  .then(r=>r.json())
-  .then(d=>{
-    if(d.status=="OK"){
-      document.getElementById("dashNama").innerText=d.nama;
-      document.getElementById("dashHari").innerText=d.totalHari;
-      document.getElementById("dashJam").innerText=d.totalJam+" Jam";
-    }
-  });
-
-  startClock();
-}
 
 </script>
 
