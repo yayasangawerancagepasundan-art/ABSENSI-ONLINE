@@ -109,7 +109,7 @@ video,img{
 <button id="confirm" disabled>KONFIRMASI</button>
 </div>
 
-<!-- CAMERA PAGE (PATCH) -->
+<!-- CAMERA PAGE -->
 <div id="cameraPage">
 <h3>AMBIL FOTO</h3>
 
@@ -262,9 +262,7 @@ btnAbsen.onclick=()=>{
   });
 };
 
-// =====================
-// CAMERA PATCH
-// =====================
+// CAMERA FIX
 let stream=null;
 
 function startCamera(){
@@ -289,6 +287,7 @@ btnFoto.onclick=()=>{
 };
 
 takePhoto.onclick=()=>{
+
   canvas.width=video.videoWidth;
   canvas.height=video.videoHeight;
   canvas.getContext("2d").drawImage(video,0,0);
@@ -301,12 +300,13 @@ takePhoto.onclick=()=>{
   cameraPage.style.display="none";
   infoPage.style.display="block";
 
-  confirm.disabled=false;
+  // 🔥 FIX UTAMA
+  document.getElementById("confirm").disabled=false;
 };
 
 retake.onclick=()=>{
   preview.style.display="none";
-  confirm.disabled=true;
+  document.getElementById("confirm").disabled=true;
 };
 
 backInfo.onclick=()=>{
