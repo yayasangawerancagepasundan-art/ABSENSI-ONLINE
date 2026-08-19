@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ABSENSI FINAL FIX</title>
+<title>ABSENSI FINAL</title>
 
 <style>
 body{
@@ -37,7 +37,6 @@ button{padding:10px 18px;background:#22c55e;border:none;border-radius:8px;color:
 <div id="cameraPage" class="hidden">
 <h3>📸 Kamera</h3>
 <video id="video" autoplay playsinline></video>
-<p id="camStatus">Mengambil foto...</p>
 </div>
 
 <!-- RESULT -->
@@ -54,9 +53,7 @@ const URL = "https://script.google.com/macros/s/AKfycbznCmA9JKgrMSklIBvN8y7fpqGJ
 
 let stream;
 
-/* =====================
-   NFC SCAN
-===================== */
+/* NFC */
 async function startScan(){
   try{
     const ndef = new NDEFReader();
@@ -65,7 +62,6 @@ async function startScan(){
     document.getElementById("status").innerText="Tempel kartu...";
 
     ndef.onreading = (event)=>{
-
       let uid = event.serialNumber;
 
       if(!uid){
@@ -87,9 +83,7 @@ async function startScan(){
   }
 }
 
-/* =====================
-   LOKASI
-===================== */
+/* LOKASI */
 function getLocation(){
 
 navigator.geolocation.getCurrentPosition(async (pos)=>{
@@ -103,17 +97,13 @@ navigator.geolocation.getCurrentPosition(async (pos)=>{
   document.getElementById("locStatus").innerText="Validasi lokasi...";
 
   try{
-
     let res = await fetch(`${URL}?uid=${window.uid}&lat=${lat}&lng=${lng}`);
     let data = await res.json();
 
     if(data.status==="IN_RANGE"){
-
       window.nama = data.nama;
       window.gudang = data.gudang;
-
       openCamera();
-
     }else{
       document.getElementById("locStatus").innerText="Diluar area ❌";
     }
@@ -125,9 +115,7 @@ navigator.geolocation.getCurrentPosition(async (pos)=>{
 });
 }
 
-/* =====================
-   KAMERA
-===================== */
+/* KAMERA */
 async function openCamera(){
 
 document.getElementById("locationPage").classList.add("hidden");
@@ -143,9 +131,7 @@ video.srcObject = stream;
 setTimeout(()=>takePhoto(video),1500);
 }
 
-/* =====================
-   FOTO (RINGAN)
-===================== */
+/* FOTO */
 function takePhoto(video){
 
 let canvas = document.createElement("canvas");
@@ -155,31 +141,27 @@ canvas.height = 240;
 let ctx = canvas.getContext("2d");
 ctx.drawImage(video,0,0,320,240);
 
-// foto hanya untuk tampilan
 let foto = canvas.toDataURL("image/jpeg",0.5);
 
 sendData(foto);
 }
 
-/* =====================
-   KIRIM DATA (🔥 FIX TOTAL)
-===================== */
+/* KIRIM DATA (FIX) */
 function sendData(foto){
 
 try{
 
-let formData = new FormData();
-formData.append("uid", window.uid);
-formData.append("lat", window.lat);
-formData.append("lng", window.lng);
+let params = new URLSearchParams();
+params.append("uid", window.uid);
+params.append("lat", window.lat);
+params.append("lng", window.lng);
 
-/* 🔥 KIRIM TANPA FETCH */
-navigator.sendBeacon(URL, formData);
+navigator.sendBeacon(URL, params);
 
 /* stop kamera */
 stream.getTracks().forEach(t=>t.stop());
 
-/* langsung tampil */
+/* tampilkan hasil */
 document.getElementById("cameraPage").classList.add("hidden");
 document.getElementById("resultPage").classList.remove("hidden");
 
