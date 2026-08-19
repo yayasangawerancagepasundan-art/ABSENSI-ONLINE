@@ -109,7 +109,7 @@ video,img{
 <button id="confirm" disabled>KONFIRMASI</button>
 </div>
 
-<!-- CAMERA PAGE -->
+<!-- CAMERA -->
 <div id="cameraPage">
 <h3>AMBIL FOTO</h3>
 
@@ -262,14 +262,14 @@ btnAbsen.onclick=()=>{
   });
 };
 
-// CAMERA FIX
+// CAMERA
 let stream=null;
 
 function startCamera(){
   navigator.mediaDevices.getUserMedia({video:true})
   .then(s=>{
     stream=s;
-    video.srcObject=s;
+    document.getElementById("video").srcObject=s;
   });
 }
 
@@ -280,18 +280,21 @@ function stopCamera(){
   }
 }
 
-btnFoto.onclick=()=>{
+document.getElementById("btnFoto").onclick=()=>{
   infoPage.style.display="none";
   cameraPage.style.display="block";
   startCamera();
 };
 
-takePhoto.onclick=()=>{
+document.getElementById("takePhoto").onclick=()=>{
+  const video=document.getElementById("video");
+  const canvas=document.getElementById("canvas");
 
   canvas.width=video.videoWidth;
   canvas.height=video.videoHeight;
   canvas.getContext("2d").drawImage(video,0,0);
 
+  const preview=document.getElementById("preview");
   preview.src=canvas.toDataURL("image/jpeg");
   preview.style.display="block";
 
@@ -300,22 +303,18 @@ takePhoto.onclick=()=>{
   cameraPage.style.display="none";
   infoPage.style.display="block";
 
-  // 🔥 FIX UTAMA
+  // FIX KONFIRMASI
   document.getElementById("confirm").disabled=false;
 };
 
-retake.onclick=()=>{
-  preview.style.display="none";
-  document.getElementById("confirm").disabled=true;
-};
-
-backInfo.onclick=()=>{
+document.getElementById("backInfo").onclick=()=>{
   stopCamera();
   cameraPage.style.display="none";
   infoPage.style.display="block";
 };
 
-confirm.onclick=()=>{
+// 🔥 FIX UTAMA DI SINI
+document.getElementById("confirm").onclick=()=>{
   infoPage.style.display="none";
   thankPage.style.display="block";
 
