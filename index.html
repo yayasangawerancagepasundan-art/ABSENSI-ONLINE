@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ABSENSI</title>
+<title>Absensi</title>
 
 <style>
 body{
@@ -12,43 +12,10 @@ body{
   font-family:Arial;
 }
 .hidden{display:none}
-
-.radar-box{
-  position:relative;
-  width:220px;
-  height:220px;
-  margin:40px auto;
-  border-radius:50%;
-  border:2px solid #22c55e;
-  overflow:hidden;
-}
-.radar-line{
-  position:absolute;
-  width:50%;
-  height:2px;
-  background:#22c55e;
-  top:50%;
-  left:50%;
-  transform-origin:left center;
-  animation:spin 2s linear infinite;
-}
-@keyframes spin{
-  from{transform:rotate(0deg)}
-  to{transform:rotate(360deg)}
-}
-
-video{
-  width:90%;
-  border-radius:10px;
-}
-button{
-  padding:10px 18px;
-  background:#22c55e;
-  border:none;
-  border-radius:8px;
-  color:white;
-}
+video{width:90%;border-radius:10px;background:black;}
+button{padding:10px 18px;background:#22c55e;border:none;border-radius:8px;color:white;}
 </style>
+
 </head>
 
 <body>
@@ -64,18 +31,14 @@ button{
 <!-- LOKASI -->
 <div id="locationPage" class="hidden">
 <h3>📍 Cek Lokasi</h3>
-<div class="radar-box">
-  <div class="radar-line"></div>
-</div>
 <p id="locStatus">Mengambil lokasi...</p>
-<p id="jarak">-</p>
 </div>
 
 <!-- KAMERA -->
 <div id="cameraPage" class="hidden">
 <h3>📸 Kamera</h3>
 <video id="video" autoplay playsinline></video>
-<p id="camStatus">Mengambil foto...</p>
+<p id="camStatus">Menyiapkan kamera...</p>
 </div>
 
 <!-- RESULT -->
@@ -83,40 +46,32 @@ button{
 <h3>✅ Berhasil</h3>
 <p id="nama"></p>
 <p id="gudang"></p>
+<img id="fotoSelfie" width="120">
 </div>
 
 <script>
 
+let stream;
 const URL = "https://script.google.com/macros/s/AKfycbznCmA9JKgrMSklIBvN8y7fpqGJt1jNSNUEu9hfGmCgGV5bMhAQPfzFqaB_leRqLis/exec";
 
-let stream;
+/* =====================
+   SCAN (SIMULASI)
+===================== */
+function startScan(){
+  let uid = "dd:b0:b2:06"; // test UID
+  window.uid = uid;
 
-/* NFC */
-async function startScan(){
-  try{
-    const ndef = new NDEFReader();
-    await ndef.scan();
+  document.getElementById("uid").innerText = uid;
 
-    document.getElementById("status").innerText="Tempel kartu...";
+  document.getElementById("scanPage").classList.add("hidden");
+  document.getElementById("locationPage").classList.remove("hidden");
 
-    ndef.onreading = (event)=>{
-      let uid = event.serialNumber;
-      window.uid = uid;
-
-      document.getElementById("uid").innerText = uid;
-
-      document.getElementById("scanPage").classList.add("hidden");
-      document.getElementById("locationPage").classList.remove("hidden");
-
-      getLocation();
-    }
-
-  }catch(e){
-    alert("HP tidak support NFC");
-  }
+  getLocation();
 }
 
-/* LOKASI */
+/* =====================
+   LOKASI
+===================== */
 function getLocation(){
 
 navigator.geolocation.getCurrentPosition(async (pos)=>{
@@ -131,20 +86,11 @@ navigator.geolocation.getCurrentPosition(async (pos)=>{
 
   try{
 
-    let res = await fetch(`${URL}?uid=${window.uid}&lat=${lat}&lng=${lng}`);
+    let res = await fetch(URL+"?uid="+window.uid+"&lat="+lat+"&lng="+lng);
     let data = await res.json();
 
-    document.getElementById("jarak").innerText="Jarak: "+Math.round(data.jarak)+" m";
-
-    if(data.status==="IN_RANGE"){
-
-      window.nama = data.nama;
-      window.gudang = data.gudang;
-
-      document.getElementById("locStatus").innerText="Dalam area";
-
-      setTimeout(openCamera,1000);
-
+    if(data.status === "IN_RANGE"){
+      openCamera();
     }else{
       document.getElementById("locStatus").innerText="Diluar area ❌";
     }
@@ -154,70 +100,67 @@ navigator.geolocation.getCurrentPosition(async (pos)=>{
   }
 
 });
+
 }
 
-/* KAMERA (FIX) */
+/* =====================
+   KAMERA
+===================== */
 async function openCamera(){
 
 document.getElementById("locationPage").classList.add("hidden");
 document.getElementById("cameraPage").classList.remove("hidden");
 
-stream = await navigator.mediaDevices.getUserMedia({
-  video:{
-    facingMode:"user",
-    width:{ideal:320},
-    height:{ideal:240}
-  }
-});
+stream = await navigator.mediaDevices.getUserMedia({video:true});
 
 let video = document.getElementById("video");
 video.srcObject = stream;
 
-video.onloadedmetadata = ()=>{
-  video.play();
-
-  setTimeout(()=>{
-    takePhoto(video);
-  },1500);
-};
+setTimeout(()=>{
+  takePhoto(video);
+},2000);
 
 }
 
-/* FOTO (FIX) */
+/* =====================
+   FOTO (🔥 SUDAH FIX)
+===================== */
 function takePhoto(video){
 
 let canvas = document.createElement("canvas");
-canvas.width = 240;
-canvas.height = 180;
+
+/* 🔥 KUNCI FIX DI SINI */
+canvas.width = 320;
+canvas.height = 240;
 
 let ctx = canvas.getContext("2d");
-ctx.drawImage(video,0,0,240,180);
+ctx.drawImage(video,0,0,320,240);
 
-let foto = canvas.toDataURL("image/jpeg",0.3);
+/* 🔥 KOMPRES */
+let foto = canvas.toDataURL("image/jpeg",0.5);
 
 sendData(foto);
 
 }
 
-/* KIRIM (FIX FORM DATA) */
+/* =====================
+   KIRIM DATA
+===================== */
 async function sendData(foto){
-
-document.getElementById("camStatus").innerText="Mengirim data...";
 
 try{
 
-let formData = new FormData();
-
-formData.append("uid", window.uid);
-formData.append("nama", window.nama);
-formData.append("gudang", window.gudang);
-formData.append("lat", window.lat);
-formData.append("lng", window.lng);
-formData.append("foto", foto);
-
 let res = await fetch(URL,{
   method:"POST",
-  body: formData
+  headers:{
+    "Content-Type":"application/json"
+  },
+  body:JSON.stringify({
+    uid:window.uid,
+    lat:window.lat,
+    lng:window.lng,
+    foto:foto
+  })
 });
 
 let data = await res.json();
@@ -229,11 +172,12 @@ if(data.status==="SUCCESS"){
   document.getElementById("cameraPage").classList.add("hidden");
   document.getElementById("resultPage").classList.remove("hidden");
 
-  document.getElementById("nama").innerText = window.nama;
-  document.getElementById("gudang").innerText = window.gudang;
+  document.getElementById("nama").innerText="Berhasil Absen";
+  document.getElementById("gudang").innerText="Lokasi OK";
+  document.getElementById("fotoSelfie").src=foto;
 
 }else{
-  alert("Server error");
+  alert("Server error: "+data.msg);
 }
 
 }catch(e){
