@@ -124,6 +124,7 @@ video,img{
 
 <h2>ABSENSI</h2>
 
+<!-- MAIN -->
 <div id="mainPage">
   <div class="location-icon">📍</div>
   <div id="status">MENCARI LOKASI...</div>
@@ -135,11 +136,15 @@ video,img{
   </div>
 
   <button id="btnAbsen" disabled>ABSEN</button>
+
+  <!-- LOADER -->
   <div class="loader" id="loader"></div>
 </div>
 
+<!-- INFO -->
 <div id="infoPage">
 <h3>INFORMASI</h3>
+
 <div>Nama: <span id="nama"></span></div>
 <div>Tanggal: <span id="tanggal"></span></div>
 <div>Waktu: <span id="waktu"></span></div>
@@ -150,38 +155,64 @@ video,img{
 
 <h3>SELFIE WAJIB</h3>
 <img id="preview" style="display:none;">
+
 <button id="btnFoto">AMBIL FOTO</button>
 <button id="confirm" disabled>KONFIRMASI</button>
 </div>
 
+<!-- CAMERA -->
 <div id="cameraPage">
 <h3>AMBIL FOTO</h3>
+
 <video id="video" autoplay></video>
 <canvas id="canvas" style="display:none;"></canvas>
+
 <button id="takePhoto">AMBIL FOTO</button>
 <button id="retake" style="display:none;">ULANGI</button>
 <button id="backInfo">KEMBALI</button>
 </div>
 
+<!-- WARNING -->
 <div id="warningPage">
 <h1>⚠️</h1>
 <h2 id="warningText"></h2>
 <p>Menutup dalam <span id="warningCountdown">5</span> detik</p>
 </div>
 
+<!-- THANK -->
 <div id="thankPage">
 <h2>TERIMAKASIH</h2>
 <p>Menutup dalam <span id="countdown">10</span> detik</p>
 </div>
 
+<!-- DASHBOARD -->
 <div id="dashboardPage">
   <h3>Dashboard</h3>
 
-  <div class="rowBox"><div>Tanggal</div><div id="dashTanggal">-</div></div>
-  <div class="rowBox"><div>Waktu</div><div id="dashWaktu">-</div></div>
-  <div class="rowBox"><div>Nama</div><div id="dashNama">-</div></div>
-  <div class="rowBox"><div>Total Hari</div><div id="dashHari">-</div></div>
-  <div class="rowBox"><div>Total Jam</div><div id="dashJam">-</div></div>
+  <div class="rowBox">
+    <div>Tanggal</div>
+    <div id="dashTanggal">-</div>
+  </div>
+
+  <div class="rowBox">
+    <div>Waktu</div>
+    <div id="dashWaktu">-</div>
+  </div>
+
+  <div class="rowBox">
+    <div>Nama</div>
+    <div id="dashNama">-</div>
+  </div>
+
+  <div class="rowBox">
+    <div>Total Hari</div>
+    <div id="dashHari">-</div>
+  </div>
+
+  <div class="rowBox">
+    <div>Total Jam</div>
+    <div id="dashJam">-</div>
+  </div>
 </div>
 
 <script>
@@ -191,22 +222,44 @@ const URL="https://script.google.com/macros/s/AKfycbxwlXN-GC8cavD_8z4k6x-m6-cItZ
 const params=new URLSearchParams(location.search);
 const UID=params.get("uid")||"";
 
-// ✅ TAMBAHAN (BYPASS ROLE)
-const paramsPage = new URLSearchParams(location.search);
-const page = paramsPage.get("page");
 
-if(page){
-  mainPage.style.display="none";
-  infoPage.style.display="none";
-  warningPage.style.display="none";
-  thankPage.style.display="none";
-  dashboardPage.style.display="none";
-  cameraPage.style.display="none";
+// =============================
+// 🔒 TAMBAHAN ROLE BYPASS
+// =============================
+(function(){
 
-  showDashboard();
-}
+  if(!UID) return;
 
-// LOADER
+  fetch(`${URL}?uid=${UID}&mode=check`)
+  .then(r=>r.json())
+  .then(d=>{
+
+    if(d.status!=="OK") return;
+
+    const role = d.role || "User";
+
+    if(role==="Admin"){
+      document.body.innerHTML = "<h2>DASHBOARD ADMIN</h2>";
+      return;
+    }
+
+    if(role==="Direktur"){
+      document.body.innerHTML = "<h2>DASHBOARD DIREKTUR</h2>";
+      return;
+    }
+
+    if(role==="Teknisi"){
+      document.body.innerHTML = "<h2>DASHBOARD TEKNISI</h2>";
+      return;
+    }
+
+  });
+
+})();
+// =============================
+
+
+// LOADER GENERATE
 const loader=document.getElementById("loader");
 for(let i=0;i<12;i++){
   let s=document.createElement("span");
@@ -223,6 +276,7 @@ const RADIUS=50;
 // ELEMENT
 const btnAbsen=document.getElementById("btnAbsen");
 const progressBar=document.getElementById("progressBar");
+
 const jarak=document.getElementById("jarak");
 const akurasi=document.getElementById("akurasi");
 const status=document.getElementById("status");
@@ -246,7 +300,7 @@ function dist(a,b,c,d){
 }
 
 // GPS
-let lat=0,lng=0;
+let lat=0,lng=0,locked=false;
 
 navigator.geolocation.watchPosition(p=>{
   lat=p.coords.latitude;
@@ -262,109 +316,8 @@ navigator.geolocation.watchPosition(p=>{
   progressBar.style.width=persen+"%";
 
   if(d<=RADIUS){
+    locked=true;
     status.innerText="LOKASI VALID";
     btnAbsen.disabled=false;
   }
 });
-
-// ABSEN
-btnAbsen.onclick=()=>{
-  loader.style.display="block";
-  btnAbsen.disabled=true;
-
-  fetch(`${URL}?uid=${UID}&lat=${lat}&lng=${lng}`)
-  .then(r=>r.json())
-  .then(data=>{
-
-    loader.style.display="none";
-
-    if(data.status!="OK"){
-      mainPage.style.display="none";
-      warningPage.style.display="block";
-
-      let txt=document.getElementById("warningText");
-
-      txt.innerText=data.pesan?.includes("3")?"BELUM 3 JAM":"BELUM 10 MENIT";
-
-      let s=5;
-      let cd=document.getElementById("warningCountdown");
-
-      let t=setInterval(()=>{
-        s--; cd.innerText=s;
-        if(s<=0){
-          clearInterval(t);
-          warningPage.style.display="none";
-          showDashboard();
-        }
-      },1000);
-
-      return;
-    }
-
-    mainPage.style.display="none";
-    infoPage.style.display="block";
-
-    document.getElementById("nama").innerText=data.nama;
-    document.getElementById("lokasi").innerText=data.gudang;
-    document.getElementById("statusAbsensi").innerText=data.aksi;
-
-    let now=new Date();
-    document.getElementById("tanggal").innerText=now.toLocaleDateString();
-    document.getElementById("waktu").innerText=now.toLocaleTimeString();
-  });
-};
-
-// CLOCK
-function startClock(){
-  function update(){
-    let now=new Date();
-    document.getElementById("dashTanggal").innerText=now.toLocaleDateString('id-ID',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
-    document.getElementById("dashWaktu").innerText=now.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});
-  }
-  update();
-  setInterval(update,1000);
-}
-
-// DASHBOARD
-function showDashboard(){
-
-  // ✅ TAMBAHAN ROLE
-  const p = new URLSearchParams(location.search);
-  const page = p.get("page");
-
-  if(page==="admin"){
-    mainPage.innerHTML="<h2>DASHBOARD ADMIN</h2>";
-    mainPage.style.display="block";
-    return;
-  }
-
-  if(page==="direktur"){
-    mainPage.innerHTML="<h2>DASHBOARD DIREKTUR</h2>";
-    mainPage.style.display="block";
-    return;
-  }
-
-  if(page==="teknisi"){
-    mainPage.innerHTML="<h2>DASHBOARD TEKNISI</h2>";
-    mainPage.style.display="block";
-    return;
-  }
-
-  dashboardPage.style.display="block";
-
-  fetch(`${URL}?mode=dashboard&uid=${UID}`)
-  .then(r=>r.json())
-  .then(d=>{
-    if(d.status=="OK"){
-      document.getElementById("dashNama").innerText=d.nama;
-      document.getElementById("dashHari").innerText=d.totalHari;
-      document.getElementById("dashJam").innerText=d.totalJam+" Jam";
-    }
-  });
-
-  startClock();
-}
-
-</script>
-</body>
-</html>
