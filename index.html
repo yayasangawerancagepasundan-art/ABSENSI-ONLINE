@@ -12,20 +12,62 @@ body{
   text-align:center;
 }
 
+.location-icon{
+  font-size:80px;
+  margin:20px;
+}
+
+.progress-container{
+  width:80%;
+  height:20px;
+  background:#222;
+  border-radius:10px;
+  margin:10px auto;
+}
+
+.progress-bar{
+  height:100%;
+  width:0%;
+  background:lime;
+}
+
 button{
   width:80%;
   padding:10px;
   margin-top:10px;
 }
 
-button:disabled{opacity:0.5;}
+#infoPage,#thankPage,#warningPage,#dashboardPage,#cameraPage{
+  display:none;
+  margin:10px;
+  padding:10px;
+  border-radius:10px;
+}
 
-.page{display:none;}
-#mainPage{display:block;}
+#infoPage,#thankPage,#dashboardPage,#cameraPage{
+  background:white;
+  color:black;
+}
+
+#warningPage{
+  background:black;
+  color:red;
+}
+
+.rowBox{
+  display:flex;
+  justify-content:space-between;
+  background:white;
+  padding:12px;
+  border-radius:8px;
+  margin-bottom:10px;
+  border:1px solid #ccc;
+}
 
 video,img{
   width:100%;
   max-width:300px;
+  border-radius:10px;
 }
 </style>
 </head>
@@ -35,76 +77,194 @@ video,img{
 <h2>ABSENSI</h2>
 
 <!-- MAIN -->
-<div id="mainPage" class="page">
-  <div>📍 <span id="status">MENCARI...</span></div>
+<div id="mainPage">
+  <div class="location-icon">📍</div>
+  <div id="status">MENCARI LOKASI...</div>
   <div>Jarak: <span id="jarak">-</span></div>
   <div>Akurasi: <span id="akurasi">-</span></div>
+
+  <div class="progress-container">
+    <div class="progress-bar" id="progressBar"></div>
+  </div>
 
   <button id="btnAbsen" disabled>ABSEN</button>
 </div>
 
 <!-- INFO -->
-<div id="infoPage" class="page">
-  <h3>INFORMASI</h3>
+<div id="infoPage">
+<h3>INFORMASI</h3>
 
-  <div>Nama: <span id="nama"></span></div>
-  <div>Status: <span id="statusAbsensi"></span></div>
+<div>Nama: <span id="nama"></span></div>
+<div>Tanggal: <span id="tanggal"></span></div>
+<div>Waktu: <span id="waktu"></span></div>
+<div>Lokasi: <span id="lokasi"></span></div>
+<div>Status: <span id="statusAbsensi"></span></div>
 
-  <hr>
+<hr>
 
-  <img id="preview" style="display:none;">
+<h3>SELFIE WAJIB</h3>
+<img id="preview" style="display:none;">
 
-  <button id="btnFoto">AMBIL FOTO</button>
-  <button id="confirm" disabled>KONFIRMASI</button>
+<button id="btnFoto">AMBIL FOTO</button>
+<button id="confirm" disabled>KONFIRMASI</button>
 </div>
 
-<!-- CAMERA PAGE -->
-<div id="cameraPage" class="page">
-  <h3>AMBIL FOTO</h3>
+<!-- CAMERA PAGE (PATCH) -->
+<div id="cameraPage">
+<h3>AMBIL FOTO</h3>
 
-  <video id="video" autoplay playsinline></video>
-  <canvas id="canvas" style="display:none;"></canvas>
+<video id="video" autoplay></video>
+<canvas id="canvas" style="display:none;"></canvas>
 
-  <button id="takePhoto">AMBIL FOTO</button>
-  <button id="cancelFoto">BATAL</button>
+<button id="takePhoto">AMBIL FOTO</button>
+<button id="retake" style="display:none;">ULANGI</button>
+<button id="backInfo">KEMBALI</button>
 </div>
 
 <!-- WARNING -->
-<div id="warningPage" class="page">
-  <h2 id="warningText"></h2>
+<div id="warningPage">
+<h1>⚠️</h1>
+<h2 id="warningText"></h2>
+<p>Menutup dalam <span id="warningCountdown">5</span> detik</p>
 </div>
 
 <!-- THANK -->
-<div id="thankPage" class="page">
-  <h2>TERIMAKASIH</h2>
-  <div id="countdown">10</div>
+<div id="thankPage">
+<h2>TERIMAKASIH</h2>
+<p>Menutup dalam <span id="countdown">10</span> detik</p>
 </div>
 
 <!-- DASHBOARD -->
-<div id="dashboardPage" class="page">
-  <div>📅 <span id="tgl"></span></div>
-  <div>⏰ <span id="jam"></span></div>
+<div id="dashboardPage">
+  <h3>Dashboard</h3>
 
-  <div>Nama: <span id="dashNama"></span></div>
-  <div>Hari: <span id="dashHari"></span></div>
-  <div>Jam: <span id="dashJam"></span></div>
+  <div class="rowBox">
+    <div>Nama</div>
+    <div id="dashNama">-</div>
+  </div>
+
+  <div class="rowBox">
+    <div>Total Hari</div>
+    <div id="dashHari">-</div>
+  </div>
+
+  <div class="rowBox">
+    <div>Total Jam</div>
+    <div id="dashJam">-</div>
+  </div>
 </div>
 
 <script>
 
-// ===== CONFIG (TIDAK DIUBAH)
+// CONFIG
 const URL="https://script.google.com/macros/s/AKfycbxwlXN-GC8cavD_8z4k6x-m6-cItZVP2F8P8jkgEuU5N0L3oO3ToZLt0VAaL8xiGhg/exec";
-const UID=new URLSearchParams(location.search).get("uid")||"";
+const params=new URLSearchParams(location.search);
+const UID=params.get("uid")||"";
 
-// ===== PAGE CONTROL (TAMBAHAN)
-const pages=["mainPage","infoPage","cameraPage","warningPage","thankPage","dashboardPage"];
+// TARGET
+const TARGET_LAT=-6.2341459;
+const TARGET_LNG=106.4997284;
+const RADIUS=50;
 
-function show(p){
-  pages.forEach(x=>document.getElementById(x).style.display="none");
-  document.getElementById(p).style.display="block";
+// ELEMENT
+const btnAbsen=document.getElementById("btnAbsen");
+const progressBar=document.getElementById("progressBar");
+
+const jarak=document.getElementById("jarak");
+const akurasi=document.getElementById("akurasi");
+const status=document.getElementById("status");
+
+const mainPage=document.getElementById("mainPage");
+const infoPage=document.getElementById("infoPage");
+const warningPage=document.getElementById("warningPage");
+const thankPage=document.getElementById("thankPage");
+const dashboardPage=document.getElementById("dashboardPage");
+const cameraPage=document.getElementById("cameraPage");
+
+// DISTANCE
+function dist(a,b,c,d){
+  const R=6371000;
+  let dLat=(c-a)*Math.PI/180;
+  let dLon=(d-b)*Math.PI/180;
+  let x=Math.sin(dLat/2)**2+
+  Math.cos(a*Math.PI/180)*Math.cos(c*Math.PI/180)*
+  Math.sin(dLon/2)**2;
+  return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));
 }
 
-// ===== CAMERA (TAMBAHAN SAJA)
+// GPS
+let lat=0,lng=0,locked=false;
+
+navigator.geolocation.watchPosition(p=>{
+  lat=p.coords.latitude;
+  lng=p.coords.longitude;
+
+  let d=dist(lat,lng,TARGET_LAT,TARGET_LNG);
+
+  jarak.innerText=Math.round(d)+" m";
+  akurasi.innerText="± "+Math.round(p.coords.accuracy)+" m";
+
+  let persen=100-(d/RADIUS*100);
+  persen=Math.max(0,Math.min(100,persen));
+  progressBar.style.width=persen+"%";
+
+  if(d<=RADIUS){
+    locked=true;
+    status.innerText="LOKASI VALID";
+    btnAbsen.disabled=false;
+  }
+});
+
+// ABSEN
+btnAbsen.onclick=()=>{
+  fetch(`${URL}?uid=${UID}&lat=${lat}&lng=${lng}`)
+  .then(r=>r.json())
+  .then(data=>{
+
+    if(data.status!="OK"){
+      mainPage.style.display="none";
+      warningPage.style.display="block";
+
+      let txt=document.getElementById("warningText");
+
+      if(data.pesan?.includes("3")){
+        txt.innerText="BELUM 3 JAM";
+      }else{
+        txt.innerText="BELUM 10 MENIT";
+      }
+
+      let s=5;
+      let cd=document.getElementById("warningCountdown");
+
+      let t=setInterval(()=>{
+        s--; cd.innerText=s;
+        if(s<=0){
+          clearInterval(t);
+          warningPage.style.display="none";
+          showDashboard();
+        }
+      },1000);
+
+      return;
+    }
+
+    mainPage.style.display="none";
+    infoPage.style.display="block";
+
+    document.getElementById("nama").innerText=data.nama;
+    document.getElementById("lokasi").innerText=data.gudang;
+    document.getElementById("statusAbsensi").innerText=data.aksi;
+
+    let now=new Date();
+    document.getElementById("tanggal").innerText=now.toLocaleDateString();
+    document.getElementById("waktu").innerText=now.toLocaleTimeString();
+
+  });
+};
+
+// =====================
+// CAMERA PATCH
+// =====================
 let stream=null;
 
 function startCamera(){
@@ -122,48 +282,13 @@ function stopCamera(){
   }
 }
 
-// ===== GPS (PAKAI PUNYAMU - INI HANYA PLACEHOLDER)
-// JANGAN HAPUS LOGIC GPS LAMAMU
-navigator.geolocation.watchPosition(p=>{
-  status.innerText="LOKASI VALID";
-  btnAbsen.disabled=false;
-
-  jarak.innerText="OK";
-  akurasi.innerText="OK";
-});
-
-// ===== ABSEN (TETAP)
-btnAbsen.onclick=()=>{
-  fetch(`${URL}?uid=${UID}&lat=0&lng=0`)
-  .then(r=>r.json())
-  .then(d=>{
-
-    if(d.status!="OK"){
-      show("warningPage");
-      warningText.innerText=d.pesan;
-      return;
-    }
-
-    nama.innerText=d.nama;
-    statusAbsensi.innerText=d.aksi;
-
-    show("infoPage");
-
-    // reset state
-    confirm.disabled=true;
-    preview.style.display="none";
-  });
-};
-
-// ===== MASUK CAMERA PAGE
 btnFoto.onclick=()=>{
-  show("cameraPage");
+  infoPage.style.display="none";
+  cameraPage.style.display="block";
   startCamera();
 };
 
-// ===== AMBIL FOTO
 takePhoto.onclick=()=>{
-
   canvas.width=video.videoWidth;
   canvas.height=video.videoHeight;
   canvas.getContext("2d").drawImage(video,0,0);
@@ -173,50 +298,53 @@ takePhoto.onclick=()=>{
 
   stopCamera();
 
-  show("infoPage");
+  cameraPage.style.display="none";
+  infoPage.style.display="block";
 
   confirm.disabled=false;
 };
 
-// ===== BATAL FOTO
-cancelFoto.onclick=()=>{
-  stopCamera();
-  show("infoPage");
+retake.onclick=()=>{
+  preview.style.display="none";
+  confirm.disabled=true;
 };
 
-// ===== KONFIRMASI
+backInfo.onclick=()=>{
+  stopCamera();
+  cameraPage.style.display="none";
+  infoPage.style.display="block";
+};
+
 confirm.onclick=()=>{
-  show("thankPage");
+  infoPage.style.display="none";
+  thankPage.style.display="block";
 
   let s=10;
-  let t=setInterval(()=>{
-    s--;
-    countdown.innerText=s;
+  let cd=document.getElementById("countdown");
 
+  let t=setInterval(()=>{
+    s--; cd.innerText=s;
     if(s<=0){
       clearInterval(t);
+      thankPage.style.display="none";
       showDashboard();
     }
   },1000);
 };
 
-// ===== DASHBOARD
+// DASHBOARD
 function showDashboard(){
-  show("dashboardPage");
+  dashboardPage.style.display="block";
 
   fetch(`${URL}?mode=dashboard&uid=${UID}`)
   .then(r=>r.json())
   .then(d=>{
-    dashNama.innerText=d.nama;
-    dashHari.innerText=d.totalHari;
-    dashJam.innerText=d.totalJam;
+    if(d.status=="OK"){
+      document.getElementById("dashNama").innerText=d.nama;
+      document.getElementById("dashHari").innerText=d.totalHari;
+      document.getElementById("dashJam").innerText=d.totalJam+" Jam";
+    }
   });
-
-  setInterval(()=>{
-    let n=new Date();
-    tgl.innerText=n.toLocaleDateString();
-    jam.innerText=n.toLocaleTimeString();
-  },1000);
 }
 
 </script>
