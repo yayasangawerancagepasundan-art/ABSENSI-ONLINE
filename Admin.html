@@ -2,132 +2,208 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>TAMBAH USER</title>
+<title>ADMIN DASHBOARD</title>
 
 <style>
 body{
+  margin:0;
   font-family:monospace;
-  background:black;
+  background:#0b0b0b;
   color:#00ff66;
+}
+
+/* HEADER */
+.header{
+  position:sticky;
+  top:0;
+  background:#0b0b0b;
+  padding:15px;
+  border-bottom:1px solid #222;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+
+.title{
+  font-size:18px;
+  letter-spacing:1px;
+}
+
+.btn{
+  background:linear-gradient(45deg, lime, #00ffcc);
+  border:none;
+  padding:10px 14px;
+  border-radius:10px;
+  font-weight:bold;
+  cursor:pointer;
+}
+
+/* GRID */
+.grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+  padding:10px;
+}
+
+/* CARD */
+.card{
+  background:#111;
+  padding:15px;
+  border-radius:15px;
+  box-shadow:0 0 10px rgba(0,255,100,0.1);
+  transition:0.3s;
+}
+
+.card:hover{
+  transform:scale(1.02);
+  box-shadow:0 0 20px rgba(0,255,100,0.3);
+}
+
+/* JAM */
+#jam{
+  font-size:26px;
+  text-align:center;
+  margin:10px 0;
+}
+
+/* TOTAL */
+.total{
+  font-size:28px;
+  font-weight:bold;
   text-align:center;
 }
 
-.container{
-  max-width:400px;
-  margin:auto;
-}
-
-.card{
-  background:white;
-  color:black;
-  padding:15px;
-  margin:10px;
-  border-radius:10px;
-}
-
-input{
-  width:100%;
+/* GUDANG */
+.gudangScroll{
+  display:flex;
+  overflow-x:auto;
+  gap:10px;
   padding:10px;
-  margin-top:5px;
-  border-radius:8px;
-  border:1px solid #ccc;
 }
 
-button{
-  width:90%;
-  padding:12px;
-  margin:10px;
-  border:none;
+.gudangItem{
+  min-width:80px;
+  background:#111;
   border-radius:10px;
-  font-weight:bold;
+  padding:10px;
+  text-align:center;
+  box-shadow:0 0 10px rgba(0,255,100,0.1);
 }
 
-.green{ background:lime; }
-.red{ background:red; color:white; }
-.blue{ background:#00ccff; }
+/* LIVE */
+.liveItem{
+  background:#111;
+  margin:8px 0;
+  padding:10px;
+  border-radius:10px;
+  display:flex;
+  justify-content:space-between;
+  animation:fadeIn 0.5s;
+}
+
+@keyframes fadeIn{
+  from{opacity:0; transform:translateY(-10px);}
+  to{opacity:1; transform:translateY(0);}
+}
+
+/* STATUS COLOR */
+.masuk{ color:#00ff66; }
+.keluar{ color:#ff4444; }
+
 </style>
 </head>
 
 <body>
 
-<h2>➕ TAMBAH USER</h2>
+<!-- HEADER -->
+<div class="header">
+  <div class="title">⚡ ADMIN PANEL</div>
+  <button class="btn" onclick="location.href='user.html'">+ USER</button>
+</div>
 
-<div class="container">
+<!-- JAM -->
+<div id="jam">00:00:00</div>
 
+<!-- GRID -->
+<div class="grid">
+
+  <!-- TOTAL -->
   <div class="card">
-    UID
-    <input id="uid">
+    <div>Total Absen</div>
+    <div class="total" id="total">0</div>
   </div>
 
+  <!-- TOTAL JAM -->
   <div class="card">
-    NAMA
-    <input id="nama">
+    <div>Total Jam</div>
+    <div class="total" id="jamTotal">0</div>
   </div>
 
-  <div class="card">
-    GUDANG
-    <input id="gudang">
-  </div>
+</div>
 
-  <div class="card">
-    LATITUDE
-    <input id="lat" readonly>
-  </div>
+<!-- GUDANG -->
+<div class="card" style="margin:10px;">
+  <div>Distribusi Gudang</div>
+  <div class="gudangScroll" id="gudangBox"></div>
+</div>
 
-  <div class="card">
-    LONGITUDE
-    <input id="lng" readonly>
-  </div>
-
-  <button class="blue" onclick="ambilGPS()">📍 AMBIL LOKASI</button>
-
-  <button class="green" onclick="simpan()">SIMPAN</button>
-  <button class="red" onclick="batal()">BATAL</button>
-
+<!-- LIVE -->
+<div class="card" style="margin:10px;">
+  <div>Live Aktivitas</div>
+  <div id="liveBox"></div>
 </div>
 
 <script>
 
 const URL="https://script.google.com/macros/s/AKfycbxwlXN-GC8cavD_8z4k6x-m6-cItZVP2F8P8jkgEuU5N0L3oO3ToZLt0VAaL8xiGhg/exec";
 
-function ambilGPS(){
-  navigator.geolocation.getCurrentPosition(p=>{
-    document.getElementById("lat").value = p.coords.latitude;
-    document.getElementById("lng").value = p.coords.longitude;
-  },()=>{
-    alert("Gagal ambil GPS");
-  });
-}
+/* JAM */
+setInterval(()=>{
+  let now = new Date();
+  document.getElementById("jam").innerText =
+    now.toLocaleTimeString('id-ID');
+},1000);
 
-function simpan(){
+/* LOAD DATA */
+function loadData(){
 
-  const uid = document.getElementById("uid").value;
-  const nama = document.getElementById("nama").value;
-  const gudang = document.getElementById("gudang").value;
-  const lat = document.getElementById("lat").value;
-  const lng = document.getElementById("lng").value;
-
-  if(!uid || !nama || !gudang || !lat || !lng){
-    alert("Semua wajib diisi + GPS wajib");
-    return;
-  }
-
-  fetch(`${URL}?mode=addUser&uid=${uid}&nama=${nama}&gudang=${gudang}&lat=${lat}&lng=${lng}`)
+  fetch(URL+"?mode=adminSummary")
   .then(r=>r.json())
   .then(d=>{
-    if(d.status=="OK"){
-      alert("User berhasil ditambahkan");
-      location.href="admin.html";
-    }else{
-      alert(d.pesan);
-    }
+
+    document.getElementById("total").innerText = d.total || 0;
+    document.getElementById("jamTotal").innerText = d.totalJam || 0;
+
+    /* GUDANG */
+    let g = "";
+    d.gudang.forEach(x=>{
+      g += `
+      <div class="gudangItem">
+        <b>${x.nama}</b><br>${x.jumlah}
+      </div>`;
+    });
+    document.getElementById("gudangBox").innerHTML = g;
+
+    /* LIVE */
+    let l = "";
+    d.live.forEach(x=>{
+      let cls = x.aksi=="MASUK" ? "masuk" : "keluar";
+      l += `
+      <div class="liveItem">
+        <div>${x.nama}</div>
+        <div class="${cls}">${x.aksi}</div>
+        <div>${x.jam}</div>
+      </div>`;
+    });
+    document.getElementById("liveBox").innerHTML = l;
+
   });
 
 }
 
-function batal(){
-  location.href="admin.html";
-}
+setInterval(loadData,5000);
+loadData();
 
 </script>
 
