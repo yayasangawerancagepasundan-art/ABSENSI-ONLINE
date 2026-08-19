@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Absensi</title>
+<title>ABSENSI FINAL</title>
 
 <style>
 body{
@@ -15,35 +15,28 @@ body{
 video{width:90%;border-radius:10px;background:black;}
 button{padding:10px 18px;background:#22c55e;border:none;border-radius:8px;color:white;}
 </style>
-
 </head>
 
 <body>
 
-<!-- SCAN -->
 <div id="scanPage">
 <h2>ABSENSI</h2>
 <p>UID: <span id="uid">-</span></p>
 <button onclick="startScan()">SCAN KARTU</button>
-<p id="status">Menunggu...</p>
 </div>
 
-<!-- LOKASI -->
 <div id="locationPage" class="hidden">
 <h3>📍 Cek Lokasi</h3>
-<p id="locStatus">Mengambil lokasi...</p>
+<p id="locStatus">...</p>
 </div>
 
-<!-- KAMERA -->
 <div id="cameraPage" class="hidden">
 <h3>📸 Kamera</h3>
 <video id="video" autoplay playsinline></video>
-<p id="camStatus">Menyiapkan kamera...</p>
 </div>
 
-<!-- RESULT -->
 <div id="resultPage" class="hidden">
-<h3>✅ Berhasil</h3>
+<h3>✅ BERHASIL</h3>
 <p id="nama"></p>
 <p id="gudang"></p>
 <img id="fotoSelfie" width="120">
@@ -51,27 +44,33 @@ button{padding:10px 18px;background:#22c55e;border:none;border-radius:8px;color:
 
 <script>
 
-let stream;
 const URL = "https://script.google.com/macros/s/AKfycbznCmA9JKgrMSklIBvN8y7fpqGJt1jNSNUEu9hfGmCgGV5bMhAQPfzFqaB_leRqLis/exec";
 
-/* =====================
-   SCAN (SIMULASI)
-===================== */
-function startScan(){
-  let uid = "dd:b0:b2:06"; // test UID
-  window.uid = uid;
+let stream;
 
-  document.getElementById("uid").innerText = uid;
+/* NFC */
+async function startScan(){
+  try{
+    const ndef = new NDEFReader();
+    await ndef.scan();
 
-  document.getElementById("scanPage").classList.add("hidden");
-  document.getElementById("locationPage").classList.remove("hidden");
+    ndef.onreading = (event)=>{
+      window.uid = event.serialNumber;
 
-  getLocation();
+      document.getElementById("uid").innerText = window.uid;
+
+      document.getElementById("scanPage").classList.add("hidden");
+      document.getElementById("locationPage").classList.remove("hidden");
+
+      getLocation();
+    }
+
+  }catch(e){
+    alert("HP tidak support NFC");
+  }
 }
 
-/* =====================
-   LOKASI
-===================== */
+/* LOKASI */
 function getLocation(){
 
 navigator.geolocation.getCurrentPosition(async (pos)=>{
@@ -82,70 +81,57 @@ navigator.geolocation.getCurrentPosition(async (pos)=>{
   window.lat = lat;
   window.lng = lng;
 
-  document.getElementById("locStatus").innerText="Validasi lokasi...";
+  document.getElementById("locStatus").innerText="Validasi...";
 
-  try{
+  let res = await fetch(`${URL}?uid=${window.uid}&lat=${lat}&lng=${lng}`);
+  let data = await res.json();
 
-    let res = await fetch(URL+"?uid="+window.uid+"&lat="+lat+"&lng="+lng);
-    let data = await res.json();
+  if(data.status==="IN_RANGE"){
 
-    if(data.status === "IN_RANGE"){
-      openCamera();
-    }else{
-      document.getElementById("locStatus").innerText="Diluar area ❌";
-    }
+    window.nama = data.nama;
+    window.gudang = data.gudang;
 
-  }catch(e){
-    alert("Gagal koneksi lokasi");
+    openCamera();
+
+  }else{
+    document.getElementById("locStatus").innerText="Diluar area ❌";
   }
 
 });
-
 }
 
-/* =====================
-   KAMERA
-===================== */
+/* KAMERA */
 async function openCamera(){
 
 document.getElementById("locationPage").classList.add("hidden");
 document.getElementById("cameraPage").classList.remove("hidden");
 
-stream = await navigator.mediaDevices.getUserMedia({video:true});
+stream = await navigator.mediaDevices.getUserMedia({
+  video:{width:320,height:240}
+});
 
 let video = document.getElementById("video");
 video.srcObject = stream;
 
-setTimeout(()=>{
-  takePhoto(video);
-},2000);
-
+setTimeout(()=>takePhoto(video),1500);
 }
 
-/* =====================
-   FOTO (🔥 SUDAH FIX)
-===================== */
+/* FOTO */
 function takePhoto(video){
 
 let canvas = document.createElement("canvas");
-
-/* 🔥 KUNCI FIX DI SINI */
 canvas.width = 320;
 canvas.height = 240;
 
 let ctx = canvas.getContext("2d");
 ctx.drawImage(video,0,0,320,240);
 
-/* 🔥 KOMPRES */
 let foto = canvas.toDataURL("image/jpeg",0.5);
 
 sendData(foto);
-
 }
 
-/* =====================
-   KIRIM DATA
-===================== */
+/* KIRIM (TANPA FOTO) */
 async function sendData(foto){
 
 try{
@@ -158,8 +144,7 @@ let res = await fetch(URL,{
   body:JSON.stringify({
     uid:window.uid,
     lat:window.lat,
-    lng:window.lng,
-    foto:foto
+    lng:window.lng
   })
 });
 
@@ -172,21 +157,20 @@ if(data.status==="SUCCESS"){
   document.getElementById("cameraPage").classList.add("hidden");
   document.getElementById("resultPage").classList.remove("hidden");
 
-  document.getElementById("nama").innerText="Berhasil Absen";
-  document.getElementById("gudang").innerText="Lokasi OK";
-  document.getElementById("fotoSelfie").src=foto;
+  document.getElementById("nama").innerText = window.nama;
+  document.getElementById("gudang").innerText = window.gudang;
+  document.getElementById("fotoSelfie").src = foto;
 
 }else{
-  alert("Server error: "+data.msg);
+  alert("Server error");
 }
 
 }catch(e){
-  alert("Gagal kirim data");
+  alert("Gagal kirim");
 }
 
 }
 
 </script>
-
 </body>
 </html>
