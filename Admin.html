@@ -1,19 +1,18 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ADMIN</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ADMIN PANEL</title>
 
 <style>
 body{
-  background:black;
-  color:#00ff88;
+  background:#000;
+  color:#00ff99;
   font-family:monospace;
   margin:0;
   padding:15px;
 }
 
-/* HEADER */
 .header{
   display:flex;
   justify-content:space-between;
@@ -21,236 +20,131 @@ body{
 }
 
 .btn{
-  background:#00ff88;
-  color:black;
-  padding:8px 12px;
-  border-radius:8px;
-  cursor:pointer;
+  background:#00ff99;
+  border:none;
+  padding:10px;
+  border-radius:10px;
+  font-weight:bold;
 }
 
-/* BOX */
-.box{
+.card{
   background:#111;
   padding:15px;
-  border-radius:10px;
+  border-radius:15px;
   margin-top:15px;
 }
 
-/* GUDANG SCROLL */
 .scroll{
   display:flex;
   overflow-x:auto;
   gap:10px;
 }
 
-.card{
-  min-width:90px;
-  background:#222;
+.box{
+  min-width:120px;
+  background:#000;
+  border:1px solid #00ff99;
   padding:10px;
-  border-radius:8px;
-  text-align:center;
+  border-radius:10px;
 }
 
-/* LIVE */
-#live{
-  font-size:14px;
-  line-height:1.6;
-}
-
-/* SEARCH */
 input{
   width:100%;
   padding:10px;
   margin-top:10px;
-  border-radius:8px;
+  border-radius:10px;
   border:none;
 }
-
-/* POPUP */
-.popup{
-  position:fixed;
-  top:0;
-  left:0;
-  width:100%;
-  height:100%;
-  background:rgba(0,0,0,0.8);
-  display:none;
-  justify-content:center;
-  align-items:center;
-}
-
-.popupBox{
-  background:#111;
-  padding:20px;
-  border-radius:10px;
-  width:90%;
-  max-width:300px;
-}
-
-.popup input{
-  margin-bottom:10px;
-}
 </style>
-
 </head>
 
 <body>
 
-<!-- HEADER -->
 <div class="header">
-  <h2>ADMIN</h2>
-  <div class="btn" onclick="openPopup()">+ USER</div>
+  <h2>⚡ ADMIN PANEL</h2>
+  <button class="btn" onclick="toggleForm()">+ USER</button>
 </div>
 
-<div id="jam"></div>
+<div id="clock"></div>
 
-<!-- SEARCH -->
-<input id="search" placeholder="Cari nama...">
+<input placeholder="Cari nama...">
 
-<!-- SUMMARY -->
-<div class="box">
-  Total Absen: <b id="total">0</b><br>
-  Total Jam: <b id="jamKerja">0</b>
+<div class="card">
+  <div>Total Absen: <span id="total">0</span></div>
+  <div>Total Jam: <span id="jam">0</span></div>
 </div>
 
-<!-- GUDANG -->
-<div class="box">
-  <b>Distribusi Gudang</b>
+<div class="card">
+  <h3>Distribusi Gudang</h3>
   <div class="scroll" id="gudang"></div>
 </div>
 
-<!-- LIVE -->
-<div class="box">
-  <b>Live Activity</b>
+<div class="card">
+  <h3>Live Aktivitas</h3>
   <div id="live"></div>
 </div>
 
-<!-- POPUP TAMBAH USER -->
-<div class="popup" id="popup">
-  <div class="popupBox">
-    <h3>Tambah User</h3>
+<div class="card" id="form" style="display:none;">
+  <h3>Tambah User</h3>
+  <input id="uid" placeholder="UID">
+  <input id="nama" placeholder="Nama">
+  <input id="gd" placeholder="Gudang">
 
-    <input id="uid" placeholder="UID">
-    <input id="nama" placeholder="Nama">
-    <input id="gudangInput" placeholder="Gudang">
-
-    <div class="btn" onclick="getGPS()">Ambil GPS</div>
-    <div id="gps" style="font-size:12px;margin:5px 0"></div>
-
-    <div class="btn" onclick="simpan()">SIMPAN</div>
-    <div class="btn" onclick="closePopup()">BATAL</div>
-  </div>
+  <button class="btn" onclick="simpan()">SIMPAN</button>
 </div>
 
 <script>
+const URL = "https://script.google.com/macros/s/AKfycbxwlXN-GC8cavD_8z4k6x-m6-cItZVP2F8P8jkgEuU5N0L3oO3ToZLt0VAaL8xiGhg/exec";
 
-const URL = "PASTE_URL_APPS_SCRIPT";
-
-// ===== JAM REALTIME =====
+// JAM
 setInterval(()=>{
-  document.getElementById("jam").innerText =
-    new Date().toLocaleString();
+  document.getElementById("clock").innerText = new Date().toLocaleString();
 },1000);
 
-
-// ===== LOAD DASHBOARD =====
+// DASHBOARD
 function load(){
-
 fetch(URL+"?mode=dashboard")
 .then(r=>r.json())
 .then(d=>{
 
-// TOTAL
-document.getElementById("total").innerText = d.totalHari;
-document.getElementById("jamKerja").innerText = d.totalJam;
+  document.getElementById("total").innerText = d.totalHari;
+  document.getElementById("jam").innerText = d.totalJam;
 
-// GUDANG
-let gHTML="";
-let count=0;
-let other=0;
-
-for(let k in d.gudang){
-  count++;
-  if(count <= 5){
-    gHTML += `<div class="card">${k}<br>${d.gudang[k]}</div>`;
-  }else{
-    other += d.gudang[k];
+  let g="";
+  for(let k in d.gudang){
+    g+=`<div class="box">${k}<br>${d.gudang[k]}</div>`;
   }
-}
+  document.getElementById("gudang").innerHTML=g;
 
-if(other > 0){
-  gHTML += `<div class="card">Other<br>${other}</div>`;
-}
-
-document.getElementById("gudang").innerHTML = gHTML;
-
-
-// LIVE
-let liveHTML="";
-d.live.forEach(x=>{
-  liveHTML += `${x.jam} - ${x.nama} (${x.gudang}) ${x.status}<br>`;
-});
-
-document.getElementById("live").innerHTML = liveHTML;
+  let l="";
+  d.live.forEach(x=>{
+    l+=`${x.jam} - ${x.nama} (${x.gudang})<br>`;
+  });
+  document.getElementById("live").innerHTML=l;
 
 });
-
 }
 
-// AUTO REFRESH
 setInterval(load,5000);
 load();
 
-
-// ===== SEARCH =====
-document.getElementById("search").addEventListener("input", function(){
-  let val = this.value.toLowerCase();
-  let lines = document.getElementById("live").innerHTML.split("<br>");
-
-  let filtered = lines.filter(x => x.toLowerCase().includes(val));
-  document.getElementById("live").innerHTML = filtered.join("<br>");
-});
-
-
-// ===== POPUP =====
-function openPopup(){
-  document.getElementById("popup").style.display="flex";
+// FORM
+function toggleForm(){
+  let f=document.getElementById("form");
+  f.style.display = f.style.display=="none"?"block":"none";
 }
 
-function closePopup(){
-  document.getElementById("popup").style.display="none";
-}
-
-
-// ===== GPS =====
-let lat="", lng="";
-
-function getGPS(){
-  navigator.geolocation.getCurrentPosition(p=>{
-    lat = p.coords.latitude;
-    lng = p.coords.longitude;
-    document.getElementById("gps").innerText =
-      "GPS: " + lat + ", " + lng;
-  });
-}
-
-
-// ===== SIMPAN USER =====
 function simpan(){
+let uid=document.getElementById("uid").value;
+let nama=document.getElementById("nama").value;
+let gd=document.getElementById("gd").value;
 
-let uid = document.getElementById("uid").value;
-let nama = document.getElementById("nama").value;
-let gudang = document.getElementById("gudangInput").value;
-
-fetch(`${URL}?mode=add&uid=${uid}&nama=${nama}&gudang=${gudang}`)
+fetch(`${URL}?mode=add&uid=${uid}&nama=${nama}&gudang=${gd}`)
 .then(r=>r.json())
 .then(d=>{
-  alert("Berhasil tambah user");
-  closePopup();
+  alert("Berhasil");
 });
-
 }
-
 </script>
 
 </body>
