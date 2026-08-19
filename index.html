@@ -1,46 +1,49 @@
 <!DOCTYPE html>
 <html>
-<head>
-  <title>RFID V9</title>
-</head>
 <body>
 
-<h2>SCAN RFID</h2>
+<h2>SCAN NFC</h2>
 
-<input id="uid" placeholder="Scan UID">
-<button onclick="kirim()">SCAN</button>
+<button onclick="scanNFC()">SCAN KARTU</button>
 
 <pre id="hasil"></pre>
 
 <script>
-function kirim(){
+async function scanNFC(){
+  try{
 
-  let uid = document.getElementById("uid").value;
+    const ndef = new NDEFReader();
+    await ndef.scan();
 
-  let url = "https://script.google.com/macros/s/AKfycbyrlWCsEXuAFpv0qdAw7JLclCjjooQ3MT3wg3LKgT0CxWEa9mBGOw_9QF83mrR3toY/exec?uid=" + encodeURIComponent(uid);
+    document.getElementById("hasil").innerText = "Tempel kartu...";
 
-  fetch(url, {
-    method: "GET",
-    mode: "cors"
-  })
+    ndef.onreading = event => {
+
+      let uid = event.serialNumber;
+
+      document.getElementById("hasil").innerText = "UID: " + uid;
+
+      kirim(uid);
+    };
+
+  }catch(error){
+    document.getElementById("hasil").innerText = "ERROR NFC: " + error;
+  }
+}
+
+
+function kirim(uid){
+
+  let url = "https://script.google.com/macros/s/AKfycbyrlWCsEXuAFpv0qdAw7JLclCjjooQ3MT3wg3LKgT0CxWEa9mBGOw_9QF83mrR3toY/exec?uid=" + uid;
+
+  fetch(url)
   .then(res => res.json())
   .then(data => {
 
-    let tampil = "";
+    document.getElementById("hasil").innerText =
+      "UID: " + uid + "\n\n" +
+      JSON.stringify(data, null, 2);
 
-    if(data.status === "OK"){
-      tampil += "✅ NAMA   : " + data.nama + "\n";
-      tampil += "📌 JABATAN: " + data.jabatan + "\n";
-      tampil += "🏢 GUDANG : " + data.gudang + "\n";
-    } else {
-      tampil = "❌ " + data.status;
-    }
-
-    document.getElementById("hasil").innerText = tampil;
-
-  })
-  .catch(err => {
-    document.getElementById("hasil").innerText = "ERROR: " + err;
   });
 
 }
