@@ -2,253 +2,254 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ADMIN DASHBOARD</title>
+<title>ADMIN</title>
 
 <style>
 body{
-  margin:0;
+  background:black;
+  color:#00ff88;
   font-family:monospace;
-  background:#0b0b0b;
-  color:#00ff66;
+  margin:0;
+  padding:15px;
 }
 
 /* HEADER */
 .header{
-  position:sticky;
-  top:0;
-  background:#0b0b0b;
-  padding:15px;
-  border-bottom:1px solid #222;
   display:flex;
   justify-content:space-between;
   align-items:center;
 }
 
-.title{
-  font-size:18px;
-}
-
 .btn{
-  background:linear-gradient(45deg, lime, #00ffcc);
-  border:none;
-  padding:10px 14px;
-  border-radius:10px;
-  font-weight:bold;
+  background:#00ff88;
+  color:black;
+  padding:8px 12px;
+  border-radius:8px;
   cursor:pointer;
 }
 
-/* GRID */
-.grid{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:10px;
-  padding:10px;
-}
-
-/* CARD */
-.card{
+/* BOX */
+.box{
   background:#111;
   padding:15px;
-  border-radius:15px;
-  box-shadow:0 0 10px rgba(0,255,100,0.1);
+  border-radius:10px;
+  margin-top:15px;
 }
 
-/* JAM */
-#jam{
-  font-size:26px;
-  text-align:center;
-  margin:10px 0;
-}
-
-/* TOTAL */
-.total{
-  font-size:28px;
-  text-align:center;
-}
-
-/* GUDANG */
-.gudangScroll{
+/* GUDANG SCROLL */
+.scroll{
   display:flex;
   overflow-x:auto;
   gap:10px;
-  padding:10px;
 }
 
-.gudangItem{
-  min-width:80px;
-  background:#111;
-  border-radius:10px;
+.card{
+  min-width:90px;
+  background:#222;
   padding:10px;
+  border-radius:8px;
   text-align:center;
 }
 
 /* LIVE */
-.liveItem{
-  background:#111;
-  margin:8px 0;
-  padding:10px;
-  border-radius:10px;
-  display:flex;
-  justify-content:space-between;
+#live{
+  font-size:14px;
+  line-height:1.6;
 }
 
-/* FORM */
-#formUser{
-  display:none;
-  padding:10px;
-}
-
-#formUser input{
+/* SEARCH */
+input{
   width:100%;
   padding:10px;
   margin-top:10px;
   border-radius:8px;
   border:none;
-  background:#222;
-  color:white;
 }
 
-#formUser button{
-  margin-top:10px;
-  padding:10px;
-  border:none;
+/* POPUP */
+.popup{
+  position:fixed;
+  top:0;
+  left:0;
+  width:100%;
+  height:100%;
+  background:rgba(0,0,0,0.8);
+  display:none;
+  justify-content:center;
+  align-items:center;
+}
+
+.popupBox{
+  background:#111;
+  padding:20px;
   border-radius:10px;
+  width:90%;
+  max-width:300px;
+}
+
+.popup input{
+  margin-bottom:10px;
 }
 </style>
+
 </head>
 
 <body>
 
 <!-- HEADER -->
 <div class="header">
-  <div class="title">⚡ ADMIN PANEL</div>
-  <button class="btn" onclick="toggleForm()">+ USER</button>
+  <h2>ADMIN</h2>
+  <div class="btn" onclick="openPopup()">+ USER</div>
 </div>
 
-<!-- JAM -->
-<div id="jam">00:00:00</div>
+<div id="jam"></div>
 
-<!-- GRID -->
-<div class="grid">
-  <div class="card">
-    <div>Total Absen</div>
-    <div class="total" id="total">0</div>
-  </div>
+<!-- SEARCH -->
+<input id="search" placeholder="Cari nama...">
 
-  <div class="card">
-    <div>Total Jam</div>
-    <div class="total" id="jamTotal">0</div>
-  </div>
+<!-- SUMMARY -->
+<div class="box">
+  Total Absen: <b id="total">0</b><br>
+  Total Jam: <b id="jamKerja">0</b>
 </div>
 
 <!-- GUDANG -->
-<div class="card" style="margin:10px;">
-  <div>Distribusi Gudang</div>
-  <div class="gudangScroll" id="gudangBox"></div>
+<div class="box">
+  <b>Distribusi Gudang</b>
+  <div class="scroll" id="gudang"></div>
 </div>
 
 <!-- LIVE -->
-<div class="card" style="margin:10px;">
-  <div>Live Aktivitas</div>
-  <div id="liveBox"></div>
+<div class="box">
+  <b>Live Activity</b>
+  <div id="live"></div>
 </div>
 
-<!-- FORM TAMBAH USER -->
-<div id="formUser">
-  <div class="card">
-    <h3>TAMBAH USER</h3>
+<!-- POPUP TAMBAH USER -->
+<div class="popup" id="popup">
+  <div class="popupBox">
+    <h3>Tambah User</h3>
 
-    <input id="uid" placeholder="UID RFID">
+    <input id="uid" placeholder="UID">
     <input id="nama" placeholder="Nama">
-    <input id="gudang" placeholder="Gudang">
-    <input id="lat" placeholder="Latitude">
-    <input id="lng" placeholder="Longitude">
+    <input id="gudangInput" placeholder="Gudang">
 
-    <button onclick="simpanUser()">SIMPAN</button>
-    <button onclick="toggleForm()">BATAL</button>
+    <div class="btn" onclick="getGPS()">Ambil GPS</div>
+    <div id="gps" style="font-size:12px;margin:5px 0"></div>
+
+    <div class="btn" onclick="simpan()">SIMPAN</div>
+    <div class="btn" onclick="closePopup()">BATAL</div>
   </div>
 </div>
 
 <script>
 
-const URL="https://script.google.com/macros/s/AKfycbxwlXN-GC8cavD_8z4k6x-m6-cItZVP2F8P8jkgEuU5N0L3oO3ToZLt0VAaL8xiGhg/exec";
+const URL = "PASTE_URL_APPS_SCRIPT";
 
-/* JAM */
+// ===== JAM REALTIME =====
 setInterval(()=>{
-  let now = new Date();
   document.getElementById("jam").innerText =
-    now.toLocaleTimeString('id-ID');
+    new Date().toLocaleString();
 },1000);
 
-/* LOAD DATA */
-function loadData(){
 
-  fetch(URL+"?mode=adminSummary")
-  .then(r=>r.json())
-  .then(d=>{
+// ===== LOAD DASHBOARD =====
+function load(){
 
-    document.getElementById("total").innerText = d.total || 0;
-    document.getElementById("jamTotal").innerText = d.totalJam || 0;
+fetch(URL+"?mode=dashboard")
+.then(r=>r.json())
+.then(d=>{
 
-    let g = "";
-    d.gudang.forEach(x=>{
-      g += `
-      <div class="gudangItem">
-        <b>${x.nama}</b><br>${x.jumlah}
-      </div>`;
-    });
-    document.getElementById("gudangBox").innerHTML = g;
+// TOTAL
+document.getElementById("total").innerText = d.totalHari;
+document.getElementById("jamKerja").innerText = d.totalJam;
 
-    let l = "";
-    d.live.forEach(x=>{
-      l += `
-      <div class="liveItem">
-        <div>${x.nama}</div>
-        <div>${x.aksi}</div>
-        <div>${x.jam}</div>
-      </div>`;
-    });
-    document.getElementById("liveBox").innerHTML = l;
+// GUDANG
+let gHTML="";
+let count=0;
+let other=0;
 
-  });
-
-}
-
-/* FORM CONTROL */
-function toggleForm(){
-  let f = document.getElementById("formUser");
-  f.style.display = f.style.display=="none" ? "block" : "none";
-}
-
-function simpanUser(){
-
-  let uid = document.getElementById("uid").value.trim();
-  let nama = document.getElementById("nama").value.trim();
-  let gudang = document.getElementById("gudang").value.trim();
-  let lat = document.getElementById("lat").value.trim();
-  let lng = document.getElementById("lng").value.trim();
-
-  if(!uid || !nama || !gudang || !lat || !lng){
-    alert("SEMUA HARUS DIISI");
-    return;
+for(let k in d.gudang){
+  count++;
+  if(count <= 5){
+    gHTML += `<div class="card">${k}<br>${d.gudang[k]}</div>`;
+  }else{
+    other += d.gudang[k];
   }
+}
 
-  fetch(`${URL}?mode=addUser&uid=${uid}&nama=${nama}&gudang=${gudang}&lat=${lat}&lng=${lng}`)
-  .then(r=>r.json())
-  .then(d=>{
-    if(d.status=="OK"){
-      alert("USER DITAMBAHKAN");
-      toggleForm();
-      loadData();
-    }else{
-      alert("GAGAL");
-    }
+if(other > 0){
+  gHTML += `<div class="card">Other<br>${other}</div>`;
+}
+
+document.getElementById("gudang").innerHTML = gHTML;
+
+
+// LIVE
+let liveHTML="";
+d.live.forEach(x=>{
+  liveHTML += `${x.jam} - ${x.nama} (${x.gudang}) ${x.status}<br>`;
+});
+
+document.getElementById("live").innerHTML = liveHTML;
+
+});
+
+}
+
+// AUTO REFRESH
+setInterval(load,5000);
+load();
+
+
+// ===== SEARCH =====
+document.getElementById("search").addEventListener("input", function(){
+  let val = this.value.toLowerCase();
+  let lines = document.getElementById("live").innerHTML.split("<br>");
+
+  let filtered = lines.filter(x => x.toLowerCase().includes(val));
+  document.getElementById("live").innerHTML = filtered.join("<br>");
+});
+
+
+// ===== POPUP =====
+function openPopup(){
+  document.getElementById("popup").style.display="flex";
+}
+
+function closePopup(){
+  document.getElementById("popup").style.display="none";
+}
+
+
+// ===== GPS =====
+let lat="", lng="";
+
+function getGPS(){
+  navigator.geolocation.getCurrentPosition(p=>{
+    lat = p.coords.latitude;
+    lng = p.coords.longitude;
+    document.getElementById("gps").innerText =
+      "GPS: " + lat + ", " + lng;
   });
 }
 
-/* AUTO */
-setInterval(loadData,5000);
-loadData();
+
+// ===== SIMPAN USER =====
+function simpan(){
+
+let uid = document.getElementById("uid").value;
+let nama = document.getElementById("nama").value;
+let gudang = document.getElementById("gudangInput").value;
+
+fetch(`${URL}?mode=add&uid=${uid}&nama=${nama}&gudang=${gudang}`)
+.then(r=>r.json())
+.then(d=>{
+  alert("Berhasil tambah user");
+  closePopup();
+});
+
+}
 
 </script>
 
