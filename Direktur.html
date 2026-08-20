@@ -2,16 +2,14 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Dashboard Direktur</title>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<title>Dashboard Direktur</title>
 
 <style>
 body{
   margin:0;
-  font-family:'Segoe UI',sans-serif;
-  background:#eef3f8;
-  color:#2c3e50;
+  font-family:Arial;
+  background:#eef2f7;
 }
 
 /* HEADER */
@@ -19,7 +17,7 @@ body{
   display:flex;
   justify-content:space-between;
   align-items:center;
-  padding:20px;
+  padding:15px;
 }
 
 .title{
@@ -34,94 +32,104 @@ body{
 
 /* STATUS */
 .status{
-  margin:15px;
-  padding:20px;
-  border-radius:15px;
-  background:linear-gradient(90deg,#27ae60,#3498db);
+  margin:10px;
+  padding:15px;
+  border-radius:12px;
   color:white;
   display:flex;
   justify-content:space-between;
+  align-items:center;
 }
+
+.status.normal{background:linear-gradient(45deg,#16a085,#2980b9);}
+.status.warning{background:orange;}
+.status.danger{background:red;}
 
 /* KPI */
 .kpi{
   display:flex;
-  gap:15px;
-  margin:15px;
+  gap:10px;
+  margin:10px;
 }
 
 .kpi-card{
   flex:1;
   background:white;
   padding:15px;
-  border-radius:15px;
-  box-shadow:0 3px 10px rgba(0,0,0,0.08);
+  border-radius:12px;
+  text-align:center;
 }
 
 .kpi-card h1{
-  margin:10px 0;
+  margin:5px 0;
 }
 
 /* GRID */
 .grid{
   display:grid;
-  grid-template-columns:2fr 1fr;
-  gap:15px;
-  margin:15px;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+  margin:10px;
 }
 
+/* CARD */
 .card{
   background:white;
-  padding:15px;
-  border-radius:15px;
-  box-shadow:0 3px 10px rgba(0,0,0,0.08);
-}
-
-/* DISTRIBUSI */
-.bar{
-  height:8px;
-  background:#ddd;
-  border-radius:10px;
-  margin:5px 0 15px;
-}
-
-.fill{
-  height:100%;
-  border-radius:10px;
-}
-
-/* ALERT */
-.alert{
-  margin:15px;
-  padding:15px;
+  padding:10px;
   border-radius:12px;
 }
 
-/* LIVE */
-.live{
-  margin:15px;
+/* ACTIVITY */
+#activityBox{
+  margin:10px;
+  height:140px;
+  overflow:auto;
 }
+
+/* BAR */
+.bar{
+  height:8px;
+  background:#ddd;
+  border-radius:5px;
+  margin:5px 0;
+}
+
+.fill{
+  height:8px;
+  background:#3498db;
+  border-radius:5px;
+}
+
+/* MOBILE */
+@media(max-width:768px){
+  .kpi{flex-direction:column;}
+  .grid{grid-template-columns:1fr;}
+}
+
 </style>
 </head>
 
 <body>
 
+<!-- HEADER -->
 <div class="header">
-  <div class="title">📊 DASHBOARD DIREKTUR</div>
+  <div class="title">DASHBOARD DIREKTUR</div>
   <div class="time" id="time"></div>
 </div>
 
-<div class="status" id="statusBar">
+<!-- STATUS -->
+<div id="statusBox" class="status normal">
   <div>
-    STATUS KEHADIRAN
-    <h2 id="statusText">NORMAL</h2>
+    <b>STATUS KEHADIRAN</b><br>
+    <span id="statusText">NORMAL</span>
   </div>
-  <div id="statusDesc">Memuat...</div>
+  <div id="statusMsg">Semua berjalan baik</div>
 </div>
 
+<!-- KPI -->
 <div class="kpi">
   <div class="kpi-card">
-    HADIR HARI INI
+    HADIR
     <h1 id="hadir">0</h1>
   </div>
   <div class="kpi-card">
@@ -134,127 +142,108 @@ body{
   </div>
 </div>
 
+<!-- GRID -->
 <div class="grid">
+
+  <!-- GRAFIK -->
   <div class="card">
     <b>Trend Kehadiran</b>
     <canvas id="chart"></canvas>
   </div>
 
+  <!-- GUDANG -->
   <div class="card">
     <b>Distribusi Gudang</b>
     <div id="gudang"></div>
   </div>
+
 </div>
 
-<div class="alert" id="alertBox"></div>
-
-<div class="live">
-  <b>Aktivitas Terbaru</b>
-  <div id="live"></div>
+<!-- ACTIVITY -->
+<div class="card" id="activityBox">
+  <b>Aktivitas & Alert</b>
+  <div id="activity"></div>
 </div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <script>
 
-const URL = "https://script.google.com/macros/s/AKfycbxwlXN-GC8cavD_8z4k6x-m6-cItZVP2F8P8jkgEuU5N0L3oO3ToZLt0VAaL8xiGhg/exec";
+const URL = "https://script.google.com/macros/s/AKfycbxwlXN-GC8cavD_8z4k6x-m6-cItZVP2F8P8jkgEuU5N0L3oO3ToZLt0VAaL8xiGhg/exec?mode=dashboard";
 
-let chart;
-
+/* JAM */
 function updateTime(){
-  let now = new Date();
+  const now = new Date();
   document.getElementById("time").innerHTML =
-    now.toLocaleDateString()+"<br>"+now.toLocaleTimeString()+" WIB";
+    now.toLocaleDateString()+"<br>"+now.toLocaleTimeString();
 }
 setInterval(updateTime,1000);
 
-async function loadData(){
-  let res = await fetch(URL+"?mode=dashboard");
-  let d = await res.json();
+/* FETCH DATA */
+async function load(){
+  const res = await fetch(URL);
+  const d = await res.json();
 
-  // KPI
   document.getElementById("hadir").innerText = d.totalHari;
-  document.getElementById("tidak").innerText = 100 - d.totalHari;
+  document.getElementById("tidak").innerText = 0;
   document.getElementById("jam").innerText = d.totalJam;
 
-  // STATUS
-  let statusBar = document.getElementById("statusBar");
-  let text = document.getElementById("statusText");
-  let desc = document.getElementById("statusDesc");
+  /* STATUS */
+  let status = "normal";
+  let text = "NORMAL";
+  let msg = "Semua berjalan baik";
 
   if(d.totalHari == 0){
-    statusBar.style.background="linear-gradient(90deg,#e74c3c,#c0392b)";
-    text.innerText="KRITIS";
-    desc.innerText="Tidak ada aktivitas";
-  }else if(d.totalHari < 5){
-    statusBar.style.background="linear-gradient(90deg,#f1c40f,#e67e22)";
-    text.innerText="WARNING";
-    desc.innerText="Kehadiran rendah";
-  }else{
-    statusBar.style.background="linear-gradient(90deg,#27ae60,#16a085)";
-    text.innerText="NORMAL";
-    desc.innerText="Kehadiran berjalan baik";
+    status="danger";
+    text="KRITIS";
+    msg="Tidak ada absensi hari ini";
   }
 
-  // GUDANG
-  let gudangDiv = document.getElementById("gudang");
-  gudangDiv.innerHTML="";
+  document.getElementById("statusBox").className = "status "+status;
+  document.getElementById("statusText").innerText = text;
+  document.getElementById("statusMsg").innerText = msg;
 
-  let entries = Object.entries(d.gudang).sort((a,b)=>b[1]-a[1]);
-
-  entries.forEach(g=>{
-    let percent = (g[1]/d.totalHari*100)||0;
-
-    gudangDiv.innerHTML += `
-      ${g[0]} (${g[1]})
-      <div class="bar">
-        <div class="fill" style="width:${percent}%; background:#3498db;"></div>
-      </div>
+  /* GUDANG */
+  let g = document.getElementById("gudang");
+  g.innerHTML="";
+  for(let k in d.gudang){
+    let val = d.gudang[k];
+    g.innerHTML += `
+      ${k} (${val})
+      <div class="bar"><div class="fill" style="width:${val*10}%"></div></div>
     `;
-  });
-
-  // CHART
-  let labels = entries.map(x=>x[0]);
-  let values = entries.map(x=>x[1]);
-
-  if(chart) chart.destroy();
-
-  chart = new Chart(document.getElementById("chart"),{
-    type:'line',
-    data:{
-      labels:labels,
-      datasets:[{
-        data:values,
-        borderColor:"#2980b9",
-        backgroundColor:"rgba(52,152,219,0.2)",
-        tension:0.4
-      }]
-    }
-  });
-
-  // ALERT
-  let alertBox = document.getElementById("alertBox");
-
-  if(d.totalHari == 0){
-    alertBox.style.background="#fdecea";
-    alertBox.innerHTML="⚠ Tidak ada absensi hari ini";
-  }else{
-    alertBox.style.background="#eafaf1";
-    alertBox.innerHTML="✔ Sistem berjalan normal";
   }
 
-  // LIVE
-  let live = document.getElementById("live");
-  live.innerHTML="";
+  /* ACTIVITY */
+  let act = document.getElementById("activity");
+  act.innerHTML="";
+
+  if(d.totalHari == 0){
+    act.innerHTML += "⚠ Tidak ada absensi hari ini<br>";
+  }
 
   d.live.forEach(l=>{
-    live.innerHTML += `
-      ${l.jam} - ${l.nama} (${l.gudang}) - ${l.status}<br>
-    `;
+    act.innerHTML += `${l.jam} - ${l.nama} (${l.gudang})<br>`;
   });
 
 }
 
-setInterval(loadData,5000);
-loadData();
+/* CHART */
+new Chart(document.getElementById("chart"),{
+  type:"line",
+  data:{
+    labels:["Sen","Sel","Rab","Kam","Jum","Sab","Min"],
+    datasets:[{
+      label:"Hadir",
+      data:[0,0,0,0,0,0,0],
+      borderColor:"blue"
+    }]
+  }
+});
+
+/* AUTO REFRESH */
+setInterval(load,5000);
+load();
 
 </script>
 
