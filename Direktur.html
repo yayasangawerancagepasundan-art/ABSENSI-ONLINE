@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dashboard Direktur</title>
+
+<style>
+body{
+  margin:0;
+  font-family:Segoe UI, Arial;
+  background:#e6f2ff;
+  color:#fff;
+  padding:20px;
+}
+
+/* STATUS BAR */
+#statusBar{
+  padding:20px;
+  border-radius:15px;
+  text-align:center;
+  font-size:28px;
+  font-weight:bold;
+  transition:0.3s;
+}
+
+/* KPI */
+.kpi{
+  display:flex;
+  justify-content:space-around;
+  margin-top:20px;
+  color:#000;
+}
+
+.kpi div{
+  text-align:center;
+  font-size:18px;
+}
+
+/* GRAFIK */
+canvas{
+  margin-top:20px;
+  background:#fff;
+  border-radius:10px;
+  padding:10px;
+}
+
+/* DISTRIBUSI */
+#gudang{
+  margin-top:20px;
+  color:#000;
+}
+
+.bar{
+  margin:8px 0;
+}
+
+.bar-fill{
+  height:18px;
+  background:#3498db;
+  border-radius:5px;
+}
+
+/* ALERT */
+#alert{
+  margin-top:20px;
+  font-size:18px;
+  font-weight:bold;
+}
+
+/* LIVE */
+#live{
+  margin-top:20px;
+  font-size:12px;
+  color:#000;
+}
+</style>
+
+</head>
+
+<body>
+
+<!-- STATUS -->
+<div id="statusBar">LOADING...</div>
+
+<!-- KPI -->
+<div class="kpi">
+  <div>HADIR<br><span id="hadir">0</span></div>
+  <div>TIDAK HADIR<br><span id="tidak">0</span></div>
+  <div>TOTAL JAM<br><span id="jam">0</span></div>
+</div>
+
+<!-- GRAFIK -->
+<canvas id="chart"></canvas>
+
+<!-- DISTRIBUSI -->
+<div id="gudang"></div>
+
+<!-- ALERT -->
+<div id="alert"></div>
+
+<!-- LIVE -->
+<div id="live"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+
+const URL = "https://script.google.com/macros/s/AKfycbxwlXN-GC8cavD_8z4k6x-m6-cItZVP2F8P8jkgEuU5N0L3oO3ToZLt0VAaL8xiGhg/exec";
+
+let chart;
+let blinkInterval;
+
+// ===== LOAD DATA =====
+async function load(){
+
+  try{
+
+    let res = await fetch(URL+"?mode=direktur");
+    let d = await res.json();
+
+    console.log(d);
+
+    // ===== STATUS =====
+    let statusBar = document.getElementById("statusBar");
+    statusBar.innerText = d.status;
+
+    if(d.status=="NORMAL"){
+      statusBar.style.background="green";
+    }
+    else if(d.status=="WARNING"){
+      statusBar.style.background="orange";
+    }
+    else{
+      statusBar.style.background="red";
+    }
+
+    // ===== KPI =====
+    document.getElementById("hadir").innerText = d.hadir;
+    document.getElementById("tidak").innerText = d.tidakHadir;
+    document.getElementById("jam").innerText = d.totalJam;
+
+    // ===== GRAFIK =====
+    let labels = d.grafik.map(x=>x.hari);
+    let data = d.grafik.map(x=>x.hadir);
+
+    if(chart) chart.destroy();
+
+    chart = new Chart(document.getElementById("chart"), {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [{
+          data: data,
+          borderColor: '#007bff',
+          backgroundColor: 'transparent',
+          tension:0.4
+        }]
+      },
+      options:{
+        plugins:{legend:{display:false}}
+      }
+    });
+
+    // ===== DISTRIBUSI =====
+    let gHTML="";
+    let max = Math.max(...Object.values(d.gudang));
+
+    for(let g in d.gudang){
+      let persen = (d.gudang[g]/max)*100;
+
+      gHTML += `
+      <div class="bar">
+        ${g} (${d.gudang[g]})
+        <div class="bar-fill" style="width:${persen}%"></div>
+      </div>`;
+    }
+
+    document.getElementById("gudang").innerHTML = gHTML;
+
+    // ===== ALERT =====
+    let alertBox = document.getElementById("alert");
+
+    if(blinkInterval) clearInterval(blinkInterval);
+
+    if(d.alert.length > 0){
+
+      alertBox.innerText = d.alert[0];
+
+      let blink = false;
+
+      blinkInterval = setInterval(()=>{
+        blink = !blink;
+
+        if(d.status=="KRITIS"){
+          alertBox.style.color = blink ? "red" : "black";
+        }else{
+          alertBox.style.color = blink ? "orange" : "black";
+        }
+
+      },1000);
+
+    }else{
+      alertBox.innerText = "";
+    }
+
+    // ===== LIVE =====
+    let l="";
+    d.live.forEach(x=>{
+      l += `${x.jam} - ${x.nama} (${x.gudang})<br>`;
+    });
+
+    document.getElementById("live").innerHTML = l;
+
+  }catch(e){
+    console.log("ERROR:", e);
+  }
+
+}
+
+// ===== AUTO REFRESH =====
+setInterval(load,5000);
+load();
+
+</script>
+
+</body>
+</html>
